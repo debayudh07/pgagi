@@ -1,0 +1,72 @@
+{
+  "nav": {
+    "feed": "Flux",
+    "trending": "Tendances",
+    "favorites": "Favoris",
+    "search": "Rechercher",
+    "settings": "Paramètres"
+  },
+  "dashboard": {
+    "personalizedFeed": "Votre Flux Personnalisé",
+    "trendingNow": "Tendances Actuelles",
+    "yourFavorites": "Vos Favoris",
+    "contentCurated": "Contenu organisé selon vos préférences",
+    "popularContent": "Contenu le plus populaire dans toutes les catégories",
+    "savedContent": "Contenu que vous avez sauvegardé pour plus tard"
+  },
+  "content": {
+    "news": "Actualités",
+    "movies": "Films", 
+    "music": "Musique",
+    "social": "Social",
+    "readMore": "Lire Plus",
+    "viewMore": "Voir Plus",
+    "playNow": "Jouer Maintenant",
+    "addToFavorites": "Ajouter aux Favoris",
+    "removeFromFavorites": "Retirer des Favoris"
+  },
+  "search": {
+    "searchPlaceholder": "Rechercher des actualités, films, musique et publications sociales...",
+    "noResults": "Aucun résultat trouvé",
+    "searching": "Recherche...",
+    "contentType": "Type de Contenu",
+    "category": "Catégorie",
+    "activeFilters": "Filtres actifs:",
+    "clearAll": "Tout effacer"
+  },
+  "preferences": {
+    "categories": "Catégories",
+    "darkMode": "Mode Sombre",
+    "lightMode": "Mode Clair",
+    "language": "Langue",
+    "notifications": "Notifications",
+    "feedSettings": "Paramètres du Flux"
+  },
+  "actions": {
+    "refresh": "Actualiser",
+    "loadMore": "Charger Plus",
+    "save": "Sauvegarder",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "view": "Voir",
+    "open": "Ouvrir",
+    "close": "Fermer"
+  },
+  "messages": {
+    "loading": "Chargement...",
+    "error": "Quelque chose s'est mal passé",
+    "noContent": "Aucun contenu trouvé",
+    "tryAgain": "Réessayer",
+    "success": "Succès!",
+    "saved": "Sauvegardé avec succès",
+    "removed": "Supprimé avec succès"
+  },
+  "user": {
+    "signIn": "Se Connecter",
+    "signOut": "Se Déconnecter",
+    "profile": "Profil",
+    "account": "Compte",
+    "welcome": "Bienvenue"
+  }
+}

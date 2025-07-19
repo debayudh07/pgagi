@@ -1,0 +1,72 @@
+{
+  "nav": {
+    "feed": "Feed",
+    "trending": "Tendencias",
+    "favorites": "Favoritos",
+    "search": "Buscar",
+    "settings": "Configuración"
+  },
+  "dashboard": {
+    "personalizedFeed": "Tu Feed Personalizado",
+    "trendingNow": "Tendencias Ahora",
+    "yourFavorites": "Tus Favoritos",
+    "contentCurated": "Contenido curado basado en tus preferencias",
+    "popularContent": "Contenido más popular en todas las categorías",
+    "savedContent": "Contenido que has guardado para más tarde"
+  },
+  "content": {
+    "news": "Noticias",
+    "movies": "Películas", 
+    "music": "Música",
+    "social": "Social",
+    "readMore": "Leer Más",
+    "viewMore": "Ver Más",
+    "playNow": "Reproducir Ahora",
+    "addToFavorites": "Añadir a Favoritos",
+    "removeFromFavorites": "Quitar de Favoritos"
+  },
+  "search": {
+    "searchPlaceholder": "Buscar noticias, películas, música y publicaciones sociales...",
+    "noResults": "No se encontraron resultados",
+    "searching": "Buscando...",
+    "contentType": "Tipo de Contenido",
+    "category": "Categoría",
+    "activeFilters": "Filtros activos:",
+    "clearAll": "Limpiar todo"
+  },
+  "preferences": {
+    "categories": "Categorías",
+    "darkMode": "Modo Oscuro",
+    "lightMode": "Modo Claro",
+    "language": "Idioma",
+    "notifications": "Notificaciones",
+    "feedSettings": "Configuración del Feed"
+  },
+  "actions": {
+    "refresh": "Actualizar",
+    "loadMore": "Cargar Más",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "view": "Ver",
+    "open": "Abrir",
+    "close": "Cerrar"
+  },
+  "messages": {
+    "loading": "Cargando...",
+    "error": "Algo salió mal",
+    "noContent": "No se encontró contenido",
+    "tryAgain": "Intentar de Nuevo",
+    "success": "¡Éxito!",
+    "saved": "Guardado exitosamente",
+    "removed": "Eliminado exitosamente"
+  },
+  "user": {
+    "signIn": "Iniciar Sesión",
+    "signOut": "Cerrar Sesión",
+    "profile": "Perfil",
+    "account": "Cuenta",
+    "welcome": "Bienvenido"
+  }
+}

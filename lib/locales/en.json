@@ -1,0 +1,72 @@
+{
+  "nav": {
+    "feed": "Feed",
+    "trending": "Trending",
+    "favorites": "Favorites",
+    "search": "Search",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "personalizedFeed": "Your Personalized Feed",
+    "trendingNow": "Trending Now",
+    "yourFavorites": "Your Favorites",
+    "contentCurated": "Content curated based on your preferences",
+    "popularContent": "Most popular content across all categories",
+    "savedContent": "Content you've saved for later"
+  },
+  "content": {
+    "news": "News",
+    "movies": "Movies", 
+    "music": "Music",
+    "social": "Social",
+    "readMore": "Read More",
+    "viewMore": "View More",
+    "playNow": "Play Now",
+    "addToFavorites": "Add to Favorites",
+    "removeFromFavorites": "Remove from Favorites"
+  },
+  "search": {
+    "searchPlaceholder": "Search for news, movies, music, and social posts...",
+    "noResults": "No results found",
+    "searching": "Searching...",
+    "contentType": "Content Type",
+    "category": "Category",
+    "activeFilters": "Active filters:",
+    "clearAll": "Clear all"
+  },
+  "preferences": {
+    "categories": "Categories",
+    "darkMode": "Dark Mode",
+    "lightMode": "Light Mode",
+    "language": "Language",
+    "notifications": "Notifications",
+    "feedSettings": "Feed Settings"
+  },
+  "actions": {
+    "refresh": "Refresh",
+    "loadMore": "Load More",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "open": "Open",
+    "close": "Close"
+  },
+  "messages": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "noContent": "No content found",
+    "tryAgain": "Try Again",
+    "success": "Success!",
+    "saved": "Saved successfully",
+    "removed": "Removed successfully"
+  },
+  "user": {
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "profile": "Profile",
+    "account": "Account",
+    "welcome": "Welcome"
+  }
+}
