@@ -12,7 +12,7 @@ const rootReducer = combineReducers({
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['user'], // Only persist user data
+  whitelist: ['user', 'content'], // Persist both user and content data (including favorites)
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

@@ -54,6 +54,24 @@ export interface MusicTrack extends ContentItem {
   album?: string;
   duration?: number;
   previewUrl?: string;
+  isPlaying?: boolean;
+  popularity?: number;
+  explicit?: boolean;
+}
+
+export interface SpotifyArtist {
+  id: string;
+  name: string;
+  image?: string;
+  followers?: number;
+  genres?: string[];
+  popularity?: number;
+  url?: string;
+}
+
+export interface SpotifyTopArtistWithTracks {
+  artist: SpotifyArtist;
+  topTracks: MusicTrack[];
 }
 
 export interface SocialPost extends ContentItem {

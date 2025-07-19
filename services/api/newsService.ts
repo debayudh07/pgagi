@@ -1,7 +1,7 @@
 import { NewsArticle, ApiResponse } from '../../types';
 
-const NEWS_API_KEY = process.env.NEXT_PUBLIC_NEWS_API_KEY;
-const NEWS_API_URL = process.env.NEXT_PUBLIC_NEWS_API_URL;
+// Use internal API route to avoid CORS issues with MediaStack
+const NEWS_API_URL = '/api/news';
 
 export interface NewsApiParams {
   category?: string;
@@ -12,62 +12,140 @@ export interface NewsApiParams {
 }
 
 export class NewsService {
-  private static baseUrl = NEWS_API_URL || 'https://newsapi.org/v2';
-  private static apiKey = NEWS_API_KEY;
+  private static baseUrl = NEWS_API_URL;
 
   static async getTopHeadlines(params: NewsApiParams = {}): Promise<ApiResponse<NewsArticle[]>> {
     try {
+      console.log('📰 Fetching news with params:', params);
+      
       const searchParams = new URLSearchParams({
-        apiKey: this.apiKey || 'demo-key',
-        country: params.country || 'us',
+        country: params.country || 'in', // Default to India
         pageSize: String(params.pageSize || 20),
         page: String(params.page || 1),
         ...(params.category && { category: params.category }),
         ...(params.q && { q: params.q }),
       });
 
-      const response = await fetch(`${this.baseUrl}/top-headlines?${searchParams}`);
+      const response = await fetch(`${this.baseUrl}?${searchParams}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const apiResponse = await response.json();
+      console.log('📰 API Response:', { 
+        status: apiResponse.status, 
+        dataCount: apiResponse.data?.length || 0,
+        totalResults: apiResponse.totalResults 
+      });
 
-      // Transform API response to our NewsArticle format
-      const articles: NewsArticle[] = data.articles?.map((article: any) => ({
-        id: article.url || Math.random().toString(36),
+      if (apiResponse.status === 'error') {
+        throw new Error(apiResponse.message || 'API returned error status');
+      }
+
+      // Transform MediaStack API response to our NewsArticle format
+      const articles: NewsArticle[] = apiResponse.data?.map((article: any) => ({
+        id: article.url || `news-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         type: 'news' as const,
         title: article.title || '',
         description: article.description || '',
-        content: article.content || '',
-        image: article.urlToImage || '',
+        content: article.description || '', // MediaStack doesn't provide full content in free plan
+        image: article.image || '',
         url: article.url || '',
-        publishedAt: article.publishedAt || new Date().toISOString(),
-        source: article.source?.name || 'Unknown',
+        publishedAt: article.published_at || new Date().toISOString(),
+        source: article.source || 'Unknown',
         author: article.author || 'Unknown',
-        category: params.category || 'general',
+        category: article.category || params.category || 'general',
       })) || [];
 
+      console.log(`📰 Transformed ${articles.length} articles from MediaStack API`);
+      
       return {
         data: articles,
-        totalResults: data.totalResults,
+        totalResults: apiResponse.totalResults || articles.length,
         status: 'success',
       };
     } catch (error) {
-      console.error('News API Error:', error);
+      console.error('📰 News API Error:', error);
       
       // Return mock data when API fails or in development
+      const mockData = this.getMockNews(params.category);
+      console.log(`📰 Falling back to ${mockData.length} mock articles`);
+      
       return {
-        data: this.getMockNews(params.category),
+        data: mockData,
         status: 'success',
-        message: 'Using mock data',
+        message: 'Using mock data - MediaStack API unavailable',
       };
     }
   }
 
   static async searchNews(query: string, page = 1): Promise<ApiResponse<NewsArticle[]>> {
-    return this.getTopHeadlines({ q: query, page });
+    try {
+      console.log(`📰 Searching news for: "${query}" (page ${page})`);
+      
+      const searchParams = new URLSearchParams({
+        q: query,
+        page: String(page),
+        pageSize: '20',
+      });
+
+      const response = await fetch(`${this.baseUrl}/search?${searchParams}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const apiResponse = await response.json();
+      console.log('📰 Search API Response:', { 
+        status: apiResponse.status, 
+        dataCount: apiResponse.data?.length || 0,
+        totalResults: apiResponse.totalResults 
+      });
+
+      if (apiResponse.status === 'error') {
+        throw new Error(apiResponse.message || 'Search API returned error status');
+      }
+
+      // Transform MediaStack API response to our NewsArticle format
+      const articles: NewsArticle[] = apiResponse.data?.map((article: any) => ({
+        id: article.url || `search-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        type: 'news' as const,
+        title: article.title || '',
+        description: article.description || '',
+        content: article.description || '', // MediaStack doesn't provide full content in free plan
+        image: article.image || '',
+        url: article.url || '',
+        publishedAt: article.published_at || new Date().toISOString(),
+        source: article.source || 'Unknown',
+        author: article.author || 'Unknown',
+        category: 'search',
+      })) || [];
+
+      console.log(`📰 Search found ${articles.length} articles`);
+
+      return {
+        data: articles,
+        totalResults: apiResponse.totalResults || articles.length,
+        status: 'success',
+      };
+    } catch (error) {
+      console.error('📰 News Search Error:', error);
+      
+      // Return filtered mock data for search
+      const mockData = this.getMockNews().filter(article => 
+        article.title.toLowerCase().includes(query.toLowerCase()) ||
+        (article.description && article.description.toLowerCase().includes(query.toLowerCase()))
+      );
+
+      console.log(`📰 Search fallback: ${mockData.length} mock articles for "${query}"`);
+
+      return {
+        data: mockData,
+        status: 'success',
+        message: 'Using mock data - MediaStack Search API unavailable',
+      };
+    }
   }
 
   private static getMockNews(category?: string): NewsArticle[] {
@@ -75,41 +153,54 @@ export class NewsService {
       {
         id: '1',
         type: 'news',
-        title: 'Breaking: Technology Advancement in AI',
-        description: 'Latest developments in artificial intelligence are reshaping industries worldwide.',
-        content: 'Full article content about AI developments...',
-        image: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=400',
-        url: 'https://example.com/ai-news',
+        title: 'India Launches New Space Mission to Moon',
+        description: 'ISRO successfully launches Chandrayaan-4 mission, marking another milestone in India\'s space exploration journey.',
+        content: 'Full article content about India\'s space mission...',
+        image: 'https://images.unsplash.com/photo-1541185933-ef5d8ed016c2?w=400',
+        url: 'https://example.com/india-space-mission',
         publishedAt: new Date().toISOString(),
-        source: 'Tech Today',
-        author: 'John Doe',
-        category: category || 'technology',
+        source: 'The Times of India',
+        author: 'Rajesh Kumar',
+        category: category || 'science',
       },
       {
         id: '2',
         type: 'news',
-        title: 'Global Markets Show Strong Growth',
-        description: 'Financial markets around the world are experiencing unprecedented growth.',
-        content: 'Detailed analysis of market trends...',
-        image: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400',
-        url: 'https://example.com/market-news',
+        title: 'Delhi Metro Expands with New Green Line Extension',
+        description: 'New metro stations operational, connecting more areas in the National Capital Region with eco-friendly transport.',
+        content: 'Detailed coverage of Delhi Metro expansion...',
+        image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=400',
+        url: 'https://example.com/delhi-metro-news',
         publishedAt: new Date().toISOString(),
-        source: 'Financial Times',
-        author: 'Jane Smith',
-        category: category || 'business',
+        source: 'Hindustan Times',
+        author: 'Priya Sharma',
+        category: category || 'general',
       },
       {
         id: '3',
         type: 'news',
-        title: 'Climate Change Solutions Emerge',
-        description: 'New technologies are being developed to combat climate change effectively.',
-        content: 'In-depth coverage of climate solutions...',
-        image: 'https://images.unsplash.com/photo-1569163139394-de4e4f43e4e5?w=400',
-        url: 'https://example.com/climate-news',
+        title: 'Monsoon Arrives Early in Kerala',
+        description: 'Southwest monsoon makes early landfall in Kerala, bringing relief from the summer heat across South India.',
+        image: 'https://images.unsplash.com/photo-1518623489648-a173ef7824f3?w=400',
+        url: 'https://example.com/monsoon-news',
         publishedAt: new Date().toISOString(),
-        source: 'Green Planet',
-        author: 'Alice Johnson',
-        category: category || 'science',
+        source: 'Indian Express',
+        author: 'Amit Patel',
+        category: category || 'general',
+        content: 'In-depth weather coverage...',
+      },
+      {
+        id: '4',
+        type: 'news',
+        title: 'Indian Tech Startups Raise Record Funding',
+        description: 'Multiple Indian startups secure significant investments, boosting the country\'s position in global tech innovation.',
+        content: 'Analysis of startup funding trends in India...',
+        image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=400',
+        url: 'https://example.com/startup-funding',
+        publishedAt: new Date().toISOString(),
+        source: 'Economic Times',
+        author: 'Neha Singh',
+        category: category || 'business',
       },
     ];
 

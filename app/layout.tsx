@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from '../store';
 import { AuthProvider } from '../lib/auth';
+import { ThemeProvider } from '../components/providers/ThemeProvider';
 import './globals.css';
 import '../lib/i18n';
 
@@ -20,9 +21,11 @@ export default function RootLayout({
       <body className={inter.className}>
         <Provider store={store}>
           <PersistGate loading={<div>Loading...</div>} persistor={persistor}>
-            <AuthProvider>
-              {children}
-            </AuthProvider>
+            <ThemeProvider>
+              <AuthProvider>
+                {children}
+              </AuthProvider>
+            </ThemeProvider>
           </PersistGate>
         </Provider>
       </body>

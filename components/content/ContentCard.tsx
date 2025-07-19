@@ -11,6 +11,7 @@ import { Badge } from '../ui/badge';
 import { formatDate, truncateText } from '../../lib/utils';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { addToFavorites, removeFromFavorites } from '../../store/slices/contentSlice';
+import { useTheme } from '../../lib/useTheme';
 
 interface ContentCardProps {
   item: ContentItem;
@@ -20,6 +21,7 @@ interface ContentCardProps {
 export const ContentCard: React.FC<ContentCardProps> = ({ item, onAction }) => {
   const dispatch = useAppDispatch();
   const favorites = useAppSelector(state => state.content.favorites);
+  const theme = useTheme();
   const isFavorite = favorites.some(fav => fav.id === item.id);
 
   const handleFavoriteToggle = () => {
@@ -72,7 +74,11 @@ export const ContentCard: React.FC<ContentCardProps> = ({ item, onAction }) => {
       whileHover={{ y: -4, scale: 1.02 }}
       className="h-full"
     >
-      <Card className="h-full flex flex-col overflow-hidden bg-black/80 backdrop-blur-xl border-2 border-orange-500 shadow-lg shadow-orange-500/20 hover:shadow-orange-500/40 transition-all duration-300">
+      <Card className={`h-full flex flex-col overflow-hidden backdrop-blur-xl border-2 shadow-lg ${theme.transition} ${
+        theme.isDark
+          ? 'bg-black/80 border-orange-500 shadow-orange-500/20 hover:shadow-orange-500/40'
+          : 'bg-white/90 border-orange-600 shadow-orange-600/20 hover:shadow-orange-600/40'
+      }`}>
         {/* Image Section */}
         {item.image && (
           <div className="relative h-48 w-full overflow-hidden">
@@ -82,6 +88,13 @@ export const ContentCard: React.FC<ContentCardProps> = ({ item, onAction }) => {
               fill
               className="object-cover transition-transform duration-300 hover:scale-110"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              priority={false}
+              placeholder="blur"
+              blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGxwf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R+on//Z"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = 'https://via.placeholder.com/500x750/1a1a1a/ff6600?text=No+Image';
+              }}
             />
             {/* Comic-style overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30"></div>
@@ -116,14 +129,20 @@ export const ContentCard: React.FC<ContentCardProps> = ({ item, onAction }) => {
         )}
 
         {/* Content Section */}
-        <CardContent className="flex-1 p-4 bg-black/40 backdrop-blur-sm">
+        <CardContent className={`flex-1 p-4 backdrop-blur-sm ${theme.transitionColors} ${
+          theme.isDark ? 'bg-black/40' : 'bg-white/60'
+        }`}>
           <div className="space-y-2">
-            <h3 className="font-black text-lg leading-tight line-clamp-2 text-white" style={{ textShadow: '1px 1px 0px #ff6600' }}>
+            <h3 className={`font-black text-lg leading-tight line-clamp-2 transition-colors duration-300 ${
+              theme.isDark ? 'text-white' : 'text-gray-900'
+            }`} style={{ textShadow: '1px 1px 0px #ff6600' }}>
               {item.title}
             </h3>
             
             {item.description && (
-              <p className="text-sm text-orange-200 line-clamp-3 font-medium">
+              <p className={`text-sm line-clamp-3 font-medium transition-colors duration-300 ${
+                theme.isDark ? 'text-orange-200' : 'text-gray-600'
+              }`}>
                 {truncateText(item.description, 120)}
               </p>
             )}
@@ -206,7 +225,11 @@ export const ContentCard: React.FC<ContentCardProps> = ({ item, onAction }) => {
         </CardContent>
 
         {/* Action Buttons */}
-        <CardFooter className="p-4 pt-0 bg-black/60 backdrop-blur-sm border-t border-orange-500/30">
+        <CardFooter className={`p-4 pt-0 backdrop-blur-sm border-t ${theme.transitionColors} ${
+          theme.isDark
+            ? 'bg-black/60 border-orange-500/30'
+            : 'bg-white/80 border-orange-400/50'
+        }`}>
           <div className="flex w-full gap-2">
             <Button
               variant="outline"

@@ -8,6 +8,9 @@ declare module 'next-auth' {
       email?: string | null;
       image?: string | null;
     };
+    accessToken?: string;
+    refreshToken?: string;
+    provider?: string;
   }
 
   interface User {
@@ -15,6 +18,14 @@ declare module 'next-auth' {
     name?: string | null;
     email?: string | null;
     image?: string | null;
+  }
+}
+
+declare module 'next-auth/jwt' {
+  interface JWT {
+    accessToken?: string;
+    refreshToken?: string;
+    provider?: string;
   }
 }
 

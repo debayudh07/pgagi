@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { cn } from '../../lib/utils';
+import { useTheme } from '../../lib/useTheme';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -15,18 +16,29 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   className,
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const theme = useTheme();
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
   return (
-    <div className={cn('h-screen flex bg-gradient-to-br from-black via-gray-900 to-black', className)}>
-      {/* Comic book background effects */}
+    <div className={cn(`h-screen flex ${theme.transitionColors} ${
+      theme.isDark 
+        ? 'bg-gradient-to-br from-black via-gray-900 to-black' 
+        : 'bg-gradient-to-br from-gray-50 via-white to-gray-100'
+    }`, className)}>
+      {/* Background effects */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-10 left-10 w-32 h-32 bg-orange-500/10 rounded-full blur-xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-20 w-40 h-40 bg-blue-500/10 rounded-full blur-xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-purple-500/10 rounded-full blur-xl animate-pulse delay-500"></div>
+        <div className={`absolute top-10 left-10 w-32 h-32 rounded-full blur-xl animate-pulse ${
+          theme.isDark ? 'bg-orange-500/10' : 'bg-orange-400/20'
+        }`}></div>
+        <div className={`absolute bottom-20 right-20 w-40 h-40 rounded-full blur-xl animate-pulse delay-1000 ${
+          theme.isDark ? 'bg-blue-500/10' : 'bg-blue-400/20'
+        }`}></div>
+        <div className={`absolute top-1/2 left-1/4 w-24 h-24 rounded-full blur-xl animate-pulse delay-500 ${
+          theme.isDark ? 'bg-purple-500/10' : 'bg-purple-400/20'
+        }`}></div>
       </div>
 
       {/* Sidebar - Desktop */}
@@ -52,7 +64,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <Header onMenuClick={toggleSidebar} />
         
         {/* Page Content */}
-        <main className="flex-1 overflow-auto">
+        <main className={`flex-1 overflow-auto ${theme.transitionColors} ${
+          theme.isDark ? 'bg-black/20' : 'bg-white/50'
+        } backdrop-blur-sm`}>
           <div className="container mx-auto p-6">
             {children}
           </div>

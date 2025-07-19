@@ -8,6 +8,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card, CardContent } from '../ui/card';
 import { debounce } from '../../lib/utils';
+import { useTheme } from '../../lib/useTheme';
 import { ContentItem } from '../../types';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { setSearchQuery, setActiveFilters, searchContent } from '../../store/slices/contentSlice';
@@ -45,6 +46,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 }) => {
   const dispatch = useAppDispatch();
   const { searchQuery, activeFilters, loading } = useAppSelector(state => state.content);
+  const theme = useTheme();
   
   const [localQuery, setLocalQuery] = useState(searchQuery);
   const [showFilters, setShowFilters] = useState(false);
@@ -103,7 +105,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           placeholder={placeholder}
           value={localQuery}
           onChange={handleInputChange}
-          className="pl-12 pr-20 h-12 md:h-14 bg-black/50 backdrop-blur-sm border-2 border-orange-500/50 text-white placeholder:text-gray-400 focus:border-orange-500 focus:shadow-lg focus:shadow-orange-500/30 transition-all duration-300 rounded-lg font-medium text-sm md:text-base"
+          className={`pl-12 pr-20 h-12 md:h-14 backdrop-blur-sm border-2 focus:shadow-lg ${theme.transition} rounded-lg font-medium text-sm md:text-base ${
+            theme.isDark
+              ? 'bg-black/50 border-orange-500/50 text-white placeholder:text-gray-400 focus:border-orange-500 focus:shadow-orange-500/30'
+              : 'bg-white/50 border-orange-400/50 text-gray-900 placeholder:text-gray-500 focus:border-orange-600 focus:shadow-orange-600/30'
+          }`}
         />
         <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
           {hasActiveFilters && (
@@ -123,7 +129,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             className={`h-8 w-8 p-0 border-2 transition-all duration-300 transform hover:scale-110 ${
               showFilters 
                 ? 'bg-orange-500 text-black border-white' 
-                : 'bg-black/50 text-orange-500 border-orange-500/50 hover:bg-orange-500/20 hover:border-orange-500'
+                : theme.isDark
+                  ? 'bg-black/50 text-orange-500 border-orange-500/50 hover:bg-orange-500/20 hover:border-orange-500'
+                  : 'bg-white/50 text-orange-600 border-orange-400/50 hover:bg-orange-100 hover:border-orange-600'
             }`}
           >
             <Filter className="h-4 w-4" />
@@ -141,7 +149,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
       {/* Filters Panel */}
       {showFilters && (
-        <Card className="bg-black/80 backdrop-blur-xl border-4 border-orange-500 shadow-2xl shadow-orange-500/20 hover:shadow-orange-500/40 transition-all duration-300">
+        <Card className={`backdrop-blur-xl border-4 shadow-2xl ${theme.transition} ${
+          theme.isDark
+            ? 'bg-black/80 border-orange-500 shadow-orange-500/20 hover:shadow-orange-500/40'
+            : 'bg-white/80 border-orange-600 shadow-orange-600/20 hover:shadow-orange-600/40'
+        }`}>
           <CardContent className="p-4 md:p-6 space-y-6">
             {/* Content Type Filters */}
             <div className="space-y-3">
@@ -154,7 +166,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                     className={`cursor-pointer transition-all duration-300 transform hover:scale-105 p-2 md:p-3 text-xs md:text-sm font-bold border-2 ${
                       filters.type === type.value
                         ? 'bg-orange-500 text-black border-white shadow-lg'
-                        : 'bg-black/50 text-orange-500 border-orange-500/50 hover:bg-orange-500/20 hover:border-orange-500'
+                        : theme.isDark
+                          ? 'bg-black/50 text-orange-500 border-orange-500/50 hover:bg-orange-500/20 hover:border-orange-500'
+                          : 'bg-white/50 text-orange-600 border-orange-400/50 hover:bg-orange-100 hover:border-orange-600'
                     }`}
                     onClick={() => handleTypeFilter(type.value)}
                   >
@@ -176,7 +190,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                     className={`cursor-pointer transition-all duration-300 transform hover:scale-105 p-2 md:p-3 text-xs md:text-sm font-bold border-2 capitalize ${
                       filters.category === category
                         ? 'bg-orange-500 text-black border-white shadow-lg'
-                        : 'bg-black/50 text-orange-500 border-orange-500/50 hover:bg-orange-500/20 hover:border-orange-500'
+                        : theme.isDark
+                          ? 'bg-black/50 text-orange-500 border-orange-500/50 hover:bg-orange-500/20 hover:border-orange-500'
+                          : 'bg-white/50 text-orange-600 border-orange-400/50 hover:bg-orange-100 hover:border-orange-600'
                     }`}
                     onClick={() => handleCategoryFilter(category)}
                   >
@@ -190,7 +206,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             {hasActiveFilters && (
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-4 border-t-2 border-orange-500/30">
                 <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
-                  <span className="text-sm md:text-base text-white font-bold">🔍 ACTIVE FILTERS:</span>
+                  <span className={`text-sm md:text-base font-bold transition-colors duration-300 ${
+                    theme.isDark ? 'text-white' : 'text-gray-900'
+                  }`}>🔍 ACTIVE FILTERS:</span>
                   <div className="flex flex-wrap gap-2">
                     {filters.type && (
                       <Badge variant="secondary" className="text-xs md:text-sm bg-orange-500/20 text-orange-400 border border-orange-500/50 font-bold">

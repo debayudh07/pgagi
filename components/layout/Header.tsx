@@ -2,12 +2,13 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { Bell, Menu, Settings, User, LogOut } from 'lucide-react';
+import { Bell, Menu, Settings, User, LogOut, Sun, Moon } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { SearchBar } from '../forms/SearchBar';
 import { useAppSelector, useAppDispatch } from '../../hooks/redux';
 import { useAuth } from '../../lib/auth';
+import { globalTheme, useGlobalTheme } from '../../lib/globalTheme';
 import { syncUserFromSession } from '../../store/slices/userSlice';
 import { cn } from '../../lib/utils';
 import Link from 'next/link';
@@ -26,6 +27,7 @@ export const Header: React.FC<HeaderProps> = ({
   const dispatch = useAppDispatch();
   const { user, isAuthenticated } = useAppSelector(state => state.user);
   const { session, signOut } = useAuth();
+  const theme = useGlobalTheme();
 
   // Sync user from NextAuth session
   useEffect(() => {
@@ -37,7 +39,11 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className={cn('bg-black/90 backdrop-blur-xl border-b-2 border-orange-500 shadow-lg shadow-orange-500/20', className)}>
+    <header className={cn(`backdrop-blur-xl border-b-2 shadow-lg ${theme.classes.transition} ${
+      theme.isDark
+        ? 'bg-black/90 border-orange-500 shadow-orange-500/20'
+        : 'bg-white/90 border-orange-600 shadow-orange-600/20'
+    }`, className)}>
       <div className="flex items-center justify-between p-4">
         {/* Left Side - Menu and Search */}
         <div className="flex items-center flex-1 gap-4">
@@ -46,7 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
             variant="ghost"
             size="icon"
             onClick={onMenuClick}
-            className="md:hidden border-2 border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white transition-all duration-300 transform hover:scale-105"
+            className={`md:hidden border-2 border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white ${theme.classes.transition} transform hover:scale-105`}
           >
             <Menu className="h-5 w-5" />
           </Button>
@@ -61,11 +67,28 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right Side - Actions and User */}
         <div className="flex items-center gap-3">
+          {/* Theme Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => theme.toggle()}
+            className={cn(
+              "border-2 transform hover:scale-105",
+              theme.classes.transition,
+              theme.isDark
+                ? "border-orange-500 text-orange-400 hover:bg-orange-500 hover:text-white"
+                : "border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white"
+            )}
+            title={theme.isDark ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {theme.isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </Button>
+
           {/* Notifications */}
           <Button 
             variant="ghost" 
             size="icon" 
-            className="relative border-2 border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-300 transform hover:scale-105"
+            className={`relative border-2 border-red-500 text-red-500 hover:bg-red-500 hover:text-white ${theme.classes.transition} transform hover:scale-105`}
           >
             <Bell className="h-5 w-5" />
             <Badge
@@ -79,7 +102,7 @@ export const Header: React.FC<HeaderProps> = ({
           <Button 
             variant="ghost" 
             size="icon"
-            className="border-2 border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white transition-all duration-300 transform hover:scale-105"
+            className={`border-2 border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white ${theme.classes.transition} transform hover:scale-105`}
           >
             <Settings className="h-5 w-5" />
           </Button>
@@ -87,15 +110,21 @@ export const Header: React.FC<HeaderProps> = ({
           {/* User Avatar/Menu */}
           {isAuthenticated && user ? (
             <div className="flex items-center gap-2">
-              <div className="hidden md:block text-right bg-black/60 backdrop-blur-sm border border-orange-500/30 rounded-lg p-2">
-                <p className="text-sm font-black text-white">{user.name}</p>
+              <div className={`hidden md:block text-right backdrop-blur-sm border rounded-lg p-2 ${theme.classes.transition} ${
+                theme.isDark
+                  ? 'bg-black/60 border-orange-500/30'
+                  : 'bg-white/60 border-orange-400/50'
+              }`}>
+                <p className={`text-sm font-black ${theme.classes.transition} ${
+                  theme.isDark ? 'text-white' : 'text-gray-900'
+                }`}>{user.name}</p>
                 <p className="text-xs text-orange-400 font-bold">{user.email}</p>
               </div>
               <div className="flex items-center gap-1">
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="rounded-full border-2 border-green-500 hover:bg-green-500 transition-all duration-300 transform hover:scale-110"
+                  className={`rounded-full border-2 border-green-500 hover:bg-green-500 ${theme.classes.transition} transform hover:scale-110`}
                 >
                   {user.avatar ? (
                     <img
