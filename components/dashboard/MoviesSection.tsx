@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Film, RefreshCw, Settings, Zap } from 'lucide-react';
 import { ContentGrid } from '../content/ContentGrid';
@@ -9,29 +9,58 @@ import { ContentFilters, FilterState } from '../content/ContentFilters';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
+import { InfiniteScrollContainer } from '../ui/InfiniteScrollContainer';
+import { Pagination } from '../ui/Pagination';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
-import { fetchMovies, applyContentOrder } from '../../store/slices/contentSlice';
+import { fetchMovies, loadMoreMovies, applyContentOrder } from '../../store/slices/contentSlice';
 import { useTheme } from '../../lib/useTheme';
 import { ContentItem, Movie } from '../../types';
 
 interface MoviesSectionProps {
   onContentAction?: (action: string, item: ContentItem) => void;
+  paginationMode?: 'infinite' | 'traditional';
 }
 
-export const MoviesSection: React.FC<MoviesSectionProps> = ({ onContentAction }) => {
+export const MoviesSection: React.FC<MoviesSectionProps> = ({ 
+  onContentAction,
+  paginationMode = 'infinite'
+}) => {
   const dispatch = useAppDispatch();
-  const { movies, loading, favorites } = useAppSelector(state => state.content);
+  const { movies, loading, favorites, contentPagination } = useAppSelector(state => state.content);
   const theme = useTheme();
+
+  // Get pagination state for movies with fallback
+  const moviesPagination = contentPagination?.movies || {
+    currentPage: 1,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPreviousPage: false,
+    totalItems: 0,
+    isLoadingMore: false,
+  };
 
   // State for personalization
   const [selectedMovie, setSelectedMovie] = useState<ContentItem | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [currentPaginationMode, setCurrentPaginationMode] = useState<'infinite' | 'traditional'>(paginationMode);
   const [filter, setFilter] = useState<FilterState>({
     sortBy: 'popularity',
     sortOrder: 'desc',
     viewMode: 'grid',
     showFavoritesOnly: false,
   });
+
+  // Handle loading more content for infinite scroll
+  const handleLoadMore = useCallback(() => {
+    if (moviesPagination.hasNextPage && !moviesPagination.isLoadingMore) {
+      dispatch(loadMoreMovies());
+    }
+  }, [dispatch, moviesPagination.hasNextPage, moviesPagination.isLoadingMore]);
+
+  // Handle page change for traditional pagination
+  const handlePageChange = useCallback((page: number) => {
+    dispatch(fetchMovies({ page }));
+  }, [dispatch]);
 
   // Get available genres from movies
   const availableGenres = useMemo(() => {
@@ -139,6 +168,10 @@ export const MoviesSection: React.FC<MoviesSectionProps> = ({ onContentAction })
     setShowFilters(!showFilters);
   };
 
+  const togglePaginationMode = () => {
+    setCurrentPaginationMode(prev => prev === 'infinite' ? 'traditional' : 'infinite');
+  };
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
@@ -165,6 +198,18 @@ export const MoviesSection: React.FC<MoviesSectionProps> = ({ onContentAction })
         </div>
         
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={togglePaginationMode}
+            className={`gap-2 border-2 transition-all duration-300 transform hover:scale-105 font-bold ${
+              currentPaginationMode === 'infinite'
+                ? 'border-purple-500 text-purple-400 bg-purple-500/20 shadow-lg shadow-purple-500/20' 
+                : 'border-cyan-500 text-cyan-400 bg-cyan-500/20 shadow-lg shadow-cyan-500/20'
+            }`}
+          >
+            {currentPaginationMode === 'infinite' ? '∞ INFINITE' : '📄 PAGES'}
+          </Button>
+          
           <Button
             variant="outline"
             onClick={toggleFilters}
@@ -235,43 +280,119 @@ export const MoviesSection: React.FC<MoviesSectionProps> = ({ onContentAction })
 
       {/* Error State */}
 
-      {/* Content Grid */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className={`backdrop-blur-md border rounded-lg p-4 md:p-6 ${theme.transitionColors} ${
-          theme.isDark
-            ? 'bg-black/40 border-orange-500/30'
-            : 'bg-white/40 border-orange-400/50'
-        }`}
-      >
-        <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
-          <span className="text-2xl md:text-3xl">🎬</span>
-          <h3 className={`text-lg md:text-xl font-black transition-colors duration-300 ${
-            theme.isDark ? 'text-white' : 'text-gray-900'
-          }`}>BLOCKBUSTER COLLECTION</h3>
-          <Badge className="bg-purple-500/80 text-white border-purple-400 font-bold">
-            {filteredAndSortedMovies.length}
-          </Badge>
-          {filter.showFavoritesOnly && (
-            <Badge className="bg-red-500/80 text-white border-red-400 font-bold animate-pulse">
-              ❤️ FAVORITES ONLY
-            </Badge>
-          )}
-        </div>
-        <ContentGrid
-          items={filteredAndSortedMovies}
-          onAction={handleContentAction}
-          enableDragDrop={true}
-          contentType="movies"
-          className={`min-h-[400px] ${
-            filter.viewMode === 'list' 
-              ? 'grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2' 
-              : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-          }`}
-        />
-      </motion.div>
+      {/* Content Grid with Infinite Scroll or Traditional Pagination */}
+      {currentPaginationMode === 'infinite' ? (
+        <InfiniteScrollContainer
+          hasNextPage={moviesPagination.hasNextPage}
+          isLoading={loading.isLoading}
+          isLoadingMore={moviesPagination.isLoadingMore}
+          onLoadMore={handleLoadMore}
+          className="space-y-4"
+          loadingMoreComponent={
+            <div className="flex items-center justify-center gap-3 py-6">
+              <div className="animate-spin rounded-full h-6 w-6 border-2 border-purple-500 border-t-transparent"></div>
+              <span className="text-purple-400 font-bold">🎬 Loading more movies...</span>
+            </div>
+          }
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className={`backdrop-blur-md border rounded-lg p-4 md:p-6 ${theme.transitionColors} ${
+              theme.isDark
+                ? 'bg-black/40 border-orange-500/30'
+                : 'bg-white/40 border-orange-400/50'
+            }`}
+          >
+            <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
+              <span className="text-2xl md:text-3xl">🎬</span>
+              <h3 className={`text-lg md:text-xl font-black transition-colors duration-300 ${
+                theme.isDark ? 'text-white' : 'text-gray-900'
+              }`}>BLOCKBUSTER COLLECTION</h3>
+              <Badge className="bg-purple-500/80 text-white border-purple-400 font-bold">
+                {filteredAndSortedMovies.length}
+              </Badge>
+              {filter.showFavoritesOnly && (
+                <Badge className="bg-red-500/80 text-white border-red-400 font-bold animate-pulse">
+                  ❤️ FAVORITES ONLY
+                </Badge>
+              )}
+              {moviesPagination.totalItems > 0 && (
+                <Badge className="bg-green-500/80 text-white border-green-400 font-bold">
+                  {moviesPagination.totalItems} total
+                </Badge>
+              )}
+            </div>
+            <ContentGrid
+              items={filteredAndSortedMovies}
+              onAction={handleContentAction}
+              enableDragDrop={true}
+              contentType="movies"
+              className={`min-h-[400px] ${
+                filter.viewMode === 'list' 
+                  ? 'grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2' 
+                  : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+              }`}
+            />
+          </motion.div>
+        </InfiniteScrollContainer>
+      ) : (
+        <>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className={`backdrop-blur-md border rounded-lg p-4 md:p-6 ${theme.transitionColors} ${
+              theme.isDark
+                ? 'bg-black/40 border-orange-500/30'
+                : 'bg-white/40 border-orange-400/50'
+            }`}
+          >
+            <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
+              <span className="text-2xl md:text-3xl">🎬</span>
+              <h3 className={`text-lg md:text-xl font-black transition-colors duration-300 ${
+                theme.isDark ? 'text-white' : 'text-gray-900'
+              }`}>BLOCKBUSTER COLLECTION</h3>
+              <Badge className="bg-purple-500/80 text-white border-purple-400 font-bold">
+                {filteredAndSortedMovies.length}
+              </Badge>
+              {filter.showFavoritesOnly && (
+                <Badge className="bg-red-500/80 text-white border-red-400 font-bold animate-pulse">
+                  ❤️ FAVORITES ONLY
+                </Badge>
+              )}
+              {moviesPagination.totalItems > 0 && (
+                <Badge className="bg-green-500/80 text-white border-green-400 font-bold">
+                  Page {moviesPagination.currentPage} of {moviesPagination.totalPages}
+                </Badge>
+              )}
+            </div>
+            <ContentGrid
+              items={filteredAndSortedMovies}
+              onAction={handleContentAction}
+              enableDragDrop={true}
+              contentType="movies"
+              className={`min-h-[400px] ${
+                filter.viewMode === 'list' 
+                  ? 'grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2' 
+                  : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+              }`}
+            />
+          </motion.div>
+
+          {/* Traditional Pagination */}
+          <Pagination
+            currentPage={moviesPagination.currentPage}
+            totalPages={moviesPagination.totalPages}
+            hasNextPage={moviesPagination.hasNextPage}
+            hasPreviousPage={moviesPagination.hasPreviousPage}
+            onPageChange={handlePageChange}
+            isLoading={loading.isLoading}
+            className="mt-6"
+          />
+        </>
+      )}
 
       {/* Enhanced Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

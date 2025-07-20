@@ -26,9 +26,10 @@ import { reorderFeedItems, reorderContentItems } from '../../store/slices/conten
 interface SortableContentCardProps {
   item: ContentItem;
   onAction?: (action: string, item: ContentItem) => void;
+  uniqueKey: string;
 }
 
-const SortableContentCard: React.FC<SortableContentCardProps> = ({ item, onAction }) => {
+const SortableContentCard: React.FC<SortableContentCardProps> = ({ item, onAction, uniqueKey }) => {
   const {
     attributes,
     listeners,
@@ -37,7 +38,7 @@ const SortableContentCard: React.FC<SortableContentCardProps> = ({ item, onActio
     transition,
     isDragging,
   } = useSortable({ 
-    id: item.id,
+    id: uniqueKey,
     transition: {
       duration: 250, // Smooth animation duration
       easing: 'cubic-bezier(0.25, 1, 0.5, 1)', // Smooth easing
@@ -139,35 +140,39 @@ export const ContentGrid: React.FC<ContentGridProps> = ({
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center bg-black/40 backdrop-blur-md border border-orange-500/30 rounded-lg p-8">
-        <div className="text-6xl mb-4 animate-bounce">📭</div>
-        <h3 className="text-lg font-black mb-2 text-white" style={{ textShadow: '1px 1px 0px #ff6600' }}>
+      <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center bg-black/40 backdrop-blur-md border border-orange-500/30 rounded-lg p-4 sm:p-8">
+        <div className="text-4xl sm:text-6xl mb-3 sm:mb-4 animate-bounce">📭</div>
+        <h3 className="text-base sm:text-lg font-black mb-2 text-white" style={{ textShadow: '1px 1px 0px #ff6600' }}>
           💥 NO CONTENT DETECTED!
         </h3>
-        <p className="text-orange-400 font-bold">
-          ⚡ Adjust your power settings or search the multiverse! 🌌
+        <p className="text-orange-400 font-bold text-sm sm:text-base">
+          ⚡ Adjust settings or search! 🌌
         </p>
       </div>
     );
   }
 
+  const uniqueKeys = items.map((item, index) => `${item.id}-${index}`);
+
   const gridContent = (
-    <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 ${className}`}>
-      {items.map((item) => (
-        enableDragDrop ? (
+    <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6 ${className}`}>
+      {items.map((item, index) => {
+        const uniqueKey = uniqueKeys[index];
+        return enableDragDrop ? (
           <SortableContentCard
-            key={item.id}
+            key={uniqueKey}
+            uniqueKey={uniqueKey}
             item={item}
             onAction={onAction}
           />
         ) : (
           <ContentCard
-            key={item.id}
+            key={uniqueKey}
             item={item}
             onAction={onAction}
           />
-        )
-      ))}
+        );
+      })}
     </div>
   );
 
@@ -178,7 +183,7 @@ export const ContentGrid: React.FC<ContentGridProps> = ({
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <SortableContext items={items.map(item => item.id)} strategy={rectSortingStrategy}>
+        <SortableContext items={uniqueKeys} strategy={rectSortingStrategy}>
           {gridContent}
         </SortableContext>
       </DndContext>

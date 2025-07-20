@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { ContentItem, NewsArticle, Movie, MusicTrack, SocialPost, LoadingState, PaginationState, SpotifyArtist, SpotifyTopArtistWithTracks } from '../../types';
+import { ContentItem, NewsArticle, Movie, MusicTrack, SocialPost, LoadingState, PaginationState, ContentTypePagination, SpotifyArtist, SpotifyTopArtistWithTracks } from '../../types';
 import { MovieService } from '../../services/api/movieService';
 import { NewsService } from '../../services/api/newsService';
 import { MusicService } from '../../services/api/musicService';
@@ -47,6 +47,7 @@ interface ContentState {
   spotifyPlayerReady: boolean;
   loading: LoadingState;
   pagination: PaginationState;
+  contentPagination: ContentTypePagination;
   searchQuery: string;
   activeFilters: {
     type?: ContentItem['type'];
@@ -104,6 +105,40 @@ const initialState: ContentState = {
     hasNextPage: false,
     hasPreviousPage: false,
   },
+  contentPagination: {
+    news: {
+      currentPage: 1,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+      totalItems: 0,
+      isLoadingMore: false,
+    },
+    movies: {
+      currentPage: 1,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+      totalItems: 0,
+      isLoadingMore: false,
+    },
+    music: {
+      currentPage: 1,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+      totalItems: 0,
+      isLoadingMore: false,
+    },
+    social: {
+      currentPage: 1,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+      totalItems: 0,
+      isLoadingMore: false,
+    },
+  },
   searchQuery: '',
   activeFilters: {},
   activeTab: 'feed',
@@ -159,8 +194,11 @@ export const fetchFeedContent = createAsyncThunk(
       // Combine all items with unique IDs
       const combinedResults = combineWithUniqueIds(itemArrays);
       
+      // Additional deduplication step to ensure no conflicts
+      const uniqueResults = ensureUniqueIds(combinedResults, 'feed');
+      
       // Shuffle results to provide variety
-      const shuffledResults = combinedResults.sort(() => Math.random() - 0.5);
+      const shuffledResults = uniqueResults.sort(() => Math.random() - 0.5);
       
       return shuffledResults;
     } catch (error) {
@@ -283,6 +321,30 @@ export const searchContent = createAsyncThunk(
         }
       }
 
+      // Search music if no type specified or if music type is specified
+      if (!params.type || params.type === 'music') {
+        const musicResponse = await MusicService.searchTracks(params.query);
+        if (musicResponse.status === 'success' && musicResponse.data) {
+          // Transform MusicTrack[] to ContentItem[]
+          const musicContentItems: ContentItem[] = musicResponse.data.map((track) => ({
+            id: track.id,
+            type: 'music' as const,
+            title: track.title,
+            description: track.artist,
+            image: track.image,
+            publishedAt: track.publishedAt || new Date().toISOString(),
+            source: 'Spotify',
+            url: track.url,
+            // Music-specific properties
+            artist: track.artist,
+            album: track.album,
+            duration: track.duration,
+            previewUrl: track.previewUrl
+          }));
+          results.push(...musicContentItems);
+        }
+      }
+
       // Ensure unique IDs for search results
       return ensureUniqueIds(results, 'search');
     } catch (error) {
@@ -295,9 +357,10 @@ export const searchContent = createAsyncThunk(
 // Fetch content by specific type
 export const fetchMovies = createAsyncThunk(
   'content/fetchMovies',
-  async (params: { page?: number } = {}, { rejectWithValue }) => {
+  async (params: { page?: number; append?: boolean } = {}, { rejectWithValue, getState }) => {
     try {
       const page = params.page || 1;
+      const append = params.append || false;
 
       const [popular, topRated, nowPlaying] = await Promise.all([
         MovieService.getPopularMovies({ page }),
@@ -312,7 +375,28 @@ export const fetchMovies = createAsyncThunk(
         { items: nowPlaying.data?.slice(0, 10) || [], prefix: 'nowplaying' }
       ];
 
-      return combineWithUniqueIds(itemArrays);
+      const combinedItems = combineWithUniqueIds(itemArrays);
+      
+      // Additional deduplication step to ensure no conflicts
+      const finalItems = ensureUniqueIds(combinedItems, 'movie');
+
+      // Calculate pagination info (assuming 20 items per page from API)
+      const totalItems = (popular.totalResults || 0) + (topRated.totalResults || 0) + (nowPlaying.totalResults || 0);
+      const itemsPerPage = 20;
+      const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+      return {
+        items: finalItems,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1,
+          totalItems,
+          isLoadingMore: false,
+        },
+        append,
+      };
     } catch (error) {
       console.error('Error fetching movies:', error);
       return rejectWithValue('Failed to fetch movies');
@@ -322,11 +406,14 @@ export const fetchMovies = createAsyncThunk(
 
 export const fetchNews = createAsyncThunk(
   'content/fetchNews',
-  async (params: { page?: number; category?: string; country?: string } = {}, { rejectWithValue }) => {
+  async (params: { page?: number; category?: string; country?: string; append?: boolean } = {}, { rejectWithValue }) => {
     try {
+      const page = params.page || 1;
+      const append = params.append || false;
+
       // Use actual NewsService to fetch news from News API
       const newsResponse = await NewsService.getTopHeadlines({
-        page: params.page || 1,
+        page,
         pageSize: 20,
         category: params.category,
         country: params.country || 'in' // Default to India
@@ -347,14 +434,41 @@ export const fetchNews = createAsyncThunk(
           author: article.author,
           category: article.category
         }));
-        
-        return ensureUniqueIds(contentItems, 'news');
-      } else {
-        throw new Error(newsResponse.message || 'Failed to fetch news');
+
+        // Calculate pagination info
+        const totalItems = newsResponse.totalResults || 0;
+        const itemsPerPage = 20;
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+        return {
+          items: contentItems,
+          pagination: {
+            currentPage: page,
+            totalPages,
+            hasNextPage: page < totalPages,
+            hasPreviousPage: page > 1,
+            totalItems,
+            isLoadingMore: false,
+          },
+          append,
+        };
       }
+
+      return {
+        items: [],
+        pagination: {
+          currentPage: page,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPreviousPage: false,
+          totalItems: 0,
+          isLoadingMore: false,
+        },
+        append,
+      };
     } catch (error) {
       console.error('Error fetching news:', error);
-      return rejectWithValue('Failed to fetch news from API');
+      return rejectWithValue('Failed to fetch news');
     }
   }
 );
@@ -690,6 +804,67 @@ export const fetchSocial = createAsyncThunk(
   }
 );
 
+// Load more action creators for infinite scrolling
+export const loadMoreNews = createAsyncThunk(
+  'content/loadMoreNews',
+  async (params: { category?: string; country?: string } = {}, { getState, dispatch }) => {
+    const state = getState() as { content: ContentState };
+    const currentPagination = state.content.contentPagination?.news;
+    
+    if (!currentPagination) {
+      console.warn('News pagination state not initialized, fetching first page');
+      return dispatch(fetchNews({ 
+        page: 1, 
+        append: false,
+        category: params.category,
+        country: params.country 
+      })).unwrap();
+    }
+    
+    const currentPage = currentPagination.currentPage;
+    const hasNextPage = currentPagination.hasNextPage;
+    
+    if (!hasNextPage) {
+      return { items: [], pagination: currentPagination, append: true };
+    }
+
+    return dispatch(fetchNews({ 
+      page: currentPage + 1, 
+      append: true,
+      category: params.category,
+      country: params.country 
+    })).unwrap();
+  }
+);
+
+export const loadMoreMovies = createAsyncThunk(
+  'content/loadMoreMovies',
+  async (_, { getState, dispatch }) => {
+    const state = getState() as { content: ContentState };
+    const currentPagination = state.content.contentPagination?.movies;
+    
+    if (!currentPagination) {
+      console.warn('Movies pagination state not initialized, fetching first page');
+      return dispatch(fetchMovies({ 
+        page: 1, 
+        append: false 
+      })).unwrap();
+    }
+    
+    const currentPage = currentPagination.currentPage;
+    const hasNextPage = currentPagination.hasNextPage;
+    
+    if (!hasNextPage) {
+      return { items: [], pagination: currentPagination, append: true };
+    }
+
+    return dispatch(fetchMovies({ 
+      page: currentPage + 1, 
+      append: true 
+    })).unwrap();
+  }
+);
+
 const contentSlice = createSlice({
   name: 'content',
   initialState,
@@ -827,6 +1002,51 @@ const contentSlice = createSlice({
       state.spotifyDeviceId = null;
       state.spotifyPlayerReady = false;
     },
+    setLoadingMore: (state, action: PayloadAction<{ contentType: keyof ContentTypePagination; isLoading: boolean }>) => {
+      const { contentType, isLoading } = action.payload;
+      
+      // Ensure contentPagination exists
+      if (!state.contentPagination) {
+        state.contentPagination = {
+          news: {
+            currentPage: 1,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: false,
+            totalItems: 0,
+            isLoadingMore: false,
+          },
+          movies: {
+            currentPage: 1,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: false,
+            totalItems: 0,
+            isLoadingMore: false,
+          },
+          music: {
+            currentPage: 1,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: false,
+            totalItems: 0,
+            isLoadingMore: false,
+          },
+          social: {
+            currentPage: 1,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: false,
+            totalItems: 0,
+            isLoadingMore: false,
+          },
+        };
+      }
+      
+      if (state.contentPagination[contentType]) {
+        state.contentPagination[contentType].isLoadingMore = isLoading;
+      }
+    },
   },
   extraReducers: (builder) => {
     // Fetch Feed Content
@@ -874,33 +1094,247 @@ const contentSlice = createSlice({
 
     // Fetch Movies
     builder
-      .addCase(fetchMovies.pending, (state) => {
-        state.loading.isLoading = true;
+      .addCase(fetchMovies.pending, (state, action) => {
+        const isAppend = action.meta.arg?.append || false;
+        if (!isAppend) {
+          state.loading.isLoading = true;
+        } else {
+          // Ensure contentPagination.movies exists
+          if (!state.contentPagination.movies) {
+            state.contentPagination.movies = {
+              currentPage: 1,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false,
+              totalItems: 0,
+              isLoadingMore: false,
+            };
+          }
+          state.contentPagination.movies.isLoadingMore = true;
+        }
       })
       .addCase(fetchMovies.fulfilled, (state, action) => {
         state.loading.isLoading = false;
-        // Ensure we always have an array, even if payload is undefined
-        state.movies = Array.isArray(action.payload) ? action.payload : [];
-        console.log('🎬 ContentSlice: Movies fetched successfully, count:', state.movies.length);
+        
+        // Ensure contentPagination.movies exists
+        if (!state.contentPagination.movies) {
+          state.contentPagination.movies = {
+            currentPage: 1,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: false,
+            totalItems: 0,
+            isLoadingMore: false,
+          };
+        }
+        
+        state.contentPagination.movies.isLoadingMore = false;
+        
+        if (action.payload && typeof action.payload === 'object' && 'items' in action.payload) {
+          const { items, pagination, append } = action.payload;
+          
+          if (append) {
+            // Append new items for infinite scroll
+            state.movies = [...state.movies, ...items];
+          } else {
+            // Replace items for initial load
+            state.movies = items;
+          }
+          
+          // Update pagination state
+          state.contentPagination.movies = pagination;
+          console.log('🎬 ContentSlice: Movies fetched successfully, count:', state.movies.length);
+        } else {
+          // Fallback for old format
+          state.movies = Array.isArray(action.payload) ? action.payload : [];
+        }
       })
       .addCase(fetchMovies.rejected, (state, action) => {
         state.loading.isLoading = false;
+        if (state.contentPagination.movies) {
+          state.contentPagination.movies.isLoadingMore = false;
+        }
         state.loading.error = action.payload as string;
       });
 
     // Fetch News
     builder
-      .addCase(fetchNews.pending, (state) => {
-        state.loading.isLoading = true;
+      .addCase(fetchNews.pending, (state, action) => {
+        const isAppend = action.meta.arg?.append || false;
+        
+        // Ensure contentPagination exists
+        if (!state.contentPagination) {
+          state.contentPagination = {
+            news: {
+              currentPage: 1,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false,
+              totalItems: 0,
+              isLoadingMore: false,
+            },
+            movies: {
+              currentPage: 1,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false,
+              totalItems: 0,
+              isLoadingMore: false,
+            },
+            music: {
+              currentPage: 1,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false,
+              totalItems: 0,
+              isLoadingMore: false,
+            },
+            social: {
+              currentPage: 1,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false,
+              totalItems: 0,
+              isLoadingMore: false,
+            },
+          };
+        }
+        
+        if (!isAppend) {
+          state.loading.isLoading = true;
+        } else {
+          // Ensure contentPagination.news exists
+          if (!state.contentPagination.news) {
+            state.contentPagination.news = {
+              currentPage: 1,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false,
+              totalItems: 0,
+              isLoadingMore: false,
+            };
+          }
+          state.contentPagination.news.isLoadingMore = true;
+        }
       })
       .addCase(fetchNews.fulfilled, (state, action) => {
         state.loading.isLoading = false;
-        // Ensure we always have an array, even if payload is undefined
-        state.news = Array.isArray(action.payload) ? action.payload : [];
-        console.log('📰 ContentSlice: News fetched successfully, count:', state.news.length);
+        
+        // Ensure contentPagination exists
+        if (!state.contentPagination) {
+          state.contentPagination = {
+            news: {
+              currentPage: 1,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false,
+              totalItems: 0,
+              isLoadingMore: false,
+            },
+            movies: {
+              currentPage: 1,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false,
+              totalItems: 0,
+              isLoadingMore: false,
+            },
+            music: {
+              currentPage: 1,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false,
+              totalItems: 0,
+              isLoadingMore: false,
+            },
+            social: {
+              currentPage: 1,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false,
+              totalItems: 0,
+              isLoadingMore: false,
+            },
+          };
+        }
+        
+        // Ensure contentPagination.news exists
+        if (!state.contentPagination.news) {
+          state.contentPagination.news = {
+            currentPage: 1,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: false,
+            totalItems: 0,
+            isLoadingMore: false,
+          };
+        }
+        
+        state.contentPagination.news.isLoadingMore = false;
+        
+        if (action.payload && typeof action.payload === 'object' && 'items' in action.payload) {
+          const { items, pagination, append } = action.payload;
+          
+          if (append) {
+            // Append new items for infinite scroll
+            state.news = [...state.news, ...items];
+          } else {
+            // Replace items for initial load
+            state.news = items;
+          }
+          
+          // Update pagination state
+          state.contentPagination.news = pagination;
+          console.log('📰 ContentSlice: News fetched successfully, count:', state.news.length);
+        } else {
+          // Fallback for old format
+          state.news = Array.isArray(action.payload) ? action.payload : [];
+        }
       })
       .addCase(fetchNews.rejected, (state, action) => {
         state.loading.isLoading = false;
+        
+        // Ensure contentPagination exists
+        if (!state.contentPagination) {
+          state.contentPagination = {
+            news: {
+              currentPage: 1,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false,
+              totalItems: 0,
+              isLoadingMore: false,
+            },
+            movies: {
+              currentPage: 1,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false,
+              totalItems: 0,
+              isLoadingMore: false,
+            },
+            music: {
+              currentPage: 1,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false,
+              totalItems: 0,
+              isLoadingMore: false,
+            },
+            social: {
+              currentPage: 1,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false,
+              totalItems: 0,
+              isLoadingMore: false,
+            },
+          };
+        }
+        
+        if (state.contentPagination.news) {
+          state.contentPagination.news.isLoadingMore = false;
+        }
         state.loading.error = action.payload as string;
       });
 
@@ -1092,6 +1526,83 @@ const contentSlice = createSlice({
       .addCase(setVolumeSDK.fulfilled, (state, action) => {
         // Volume set successfully with SDK
       });
+
+    // Load More Actions
+    builder
+      .addCase(loadMoreNews.pending, (state) => {
+        if (!state.contentPagination.news) {
+          state.contentPagination.news = {
+            currentPage: 1,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: false,
+            totalItems: 0,
+            isLoadingMore: false,
+          };
+        }
+        state.contentPagination.news.isLoadingMore = true;
+      })
+      .addCase(loadMoreNews.fulfilled, (state, action) => {
+        if (!state.contentPagination.news) {
+          state.contentPagination.news = {
+            currentPage: 1,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: false,
+            totalItems: 0,
+            isLoadingMore: false,
+          };
+        }
+        state.contentPagination.news.isLoadingMore = false;
+        if (action.payload.items.length > 0) {
+          state.news = [...state.news, ...action.payload.items];
+          state.contentPagination.news = action.payload.pagination;
+        }
+      })
+      .addCase(loadMoreNews.rejected, (state, action) => {
+        if (state.contentPagination.news) {
+          state.contentPagination.news.isLoadingMore = false;
+        }
+        state.loading.error = action.error.message || 'Failed to load more news';
+      });
+
+    builder
+      .addCase(loadMoreMovies.pending, (state) => {
+        if (!state.contentPagination.movies) {
+          state.contentPagination.movies = {
+            currentPage: 1,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: false,
+            totalItems: 0,
+            isLoadingMore: false,
+          };
+        }
+        state.contentPagination.movies.isLoadingMore = true;
+      })
+      .addCase(loadMoreMovies.fulfilled, (state, action) => {
+        if (!state.contentPagination.movies) {
+          state.contentPagination.movies = {
+            currentPage: 1,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: false,
+            totalItems: 0,
+            isLoadingMore: false,
+          };
+        }
+        state.contentPagination.movies.isLoadingMore = false;
+        if (action.payload.items.length > 0) {
+          state.movies = [...state.movies, ...action.payload.items];
+          state.contentPagination.movies = action.payload.pagination;
+        }
+      })
+      .addCase(loadMoreMovies.rejected, (state, action) => {
+        if (state.contentPagination.movies) {
+          state.contentPagination.movies.isLoadingMore = false;
+        }
+        state.loading.error = action.error.message || 'Failed to load more movies';
+      });
   },
 });
 
@@ -1113,6 +1624,7 @@ export const {
   setSpotifyConnection,
   setSpotifyPlayer,
   clearSpotifyPlayer,
+  setLoadingMore,
 } = contentSlice.actions;
 
 export default contentSlice.reducer;

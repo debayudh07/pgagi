@@ -11,7 +11,7 @@ import { Badge } from '../ui/badge';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { fetchTrendingContent, setActiveTab } from '../../store/slices/contentSlice';
 import { useTheme } from '../../lib/useTheme';
-import { ContentItem } from '../../types';
+import { ContentItem, MusicTrack } from '../../types';
 
 interface TrendingSectionProps {
   onContentAction?: (action: string, item: ContentItem) => void;
@@ -19,9 +19,13 @@ interface TrendingSectionProps {
 
 export const TrendingSection: React.FC<TrendingSectionProps> = ({ onContentAction }) => {
   const dispatch = useAppDispatch();
-  const { trending, loading, activeTab } = useAppSelector(state => state.content);
+  const { trending, loading, activeTab, topTracks, music } = useAppSelector(state => state.content);
   const theme = useTheme();
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'news' | 'movie'>('all');
+
+  // Get top tracks for trending display (combine topTracks and music data)
+  const allMusicTracks = [...(topTracks || []), ...(music || [])].filter(item => item.type === 'music');
+  const topMusicTracks = allMusicTracks.slice(0, 6); // Get top 6 tracks
 
   useEffect(() => {
     dispatch(fetchTrendingContent());
@@ -188,61 +192,103 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({ onContentActio
             theme.isDark ? 'text-white' : 'text-gray-900'
           }`}>
             <TrendingUp className="h-6 w-6 text-yellow-500" />
-            🔥 TRENDING TRACKS 2024
+            🔥 TRENDING TRACKS 2025
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Mock trending tracks data */}
-            {/*
-              { id: 1, title: "Flowers", artist: "Miley Cyrus", plays: "2.1B", trend: "+15%" },
-              { id: 2, title: "Anti-Hero", artist: "Taylor Swift", plays: "1.8B", trend: "+12%" },
-              { id: 3, title: "As It Was", artist: "Harry Styles", plays: "1.6B", trend: "+8%" },
-              { id: 4, title: "Unholy", artist: "Sam Smith ft. Kim Petras", plays: "1.4B", trend: "+22%" },
-              { id: 5, title: "Bad Habit", artist: "Steve Lacy", plays: "1.2B", trend: "+18%" },
-              { id: 6, title: "Watermelon Sugar", artist: "Harry Styles", plays: "1.1B", trend: "+5%" },
-            */}
-            {Array.from({ length: 6 }).map((_, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className={`p-4 rounded-lg border-2 transition-all duration-300 hover:scale-105 ${
-                  theme.isDark
-                    ? 'bg-gray-800/50 border-gray-700 hover:border-yellow-500'
-                    : 'bg-gray-50 border-gray-200 hover:border-yellow-500'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-bold text-lg ${
-                    index < 3 ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white' : 'bg-gray-300 text-gray-700'
-                  }`}>
-                    #{index + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-sm truncate">Track Title {index + 1}</h4>
-                    <p className="text-xs text-gray-500 truncate">Artist Name</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-xs bg-green-500/20 text-green-400 border-green-400">
-                        🎵 1.2B
-                      </Badge>
-                      <Badge variant="outline" className="text-xs bg-orange-500/20 text-orange-400 border-orange-400">
-                        📈 +18%
-                      </Badge>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0 text-green-500 hover:bg-green-500/20"
-                    onClick={() => console.log(`Playing Track Title ${index + 1}`)}
+            {/* Use actual tracks from music section */}
+            {topMusicTracks.length > 0 ? (
+              topMusicTracks.map((track, index) => {
+                const musicTrack = track as MusicTrack; // Type cast to access music-specific properties
+                return (
+                  <motion.div
+                    key={track.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className={`p-4 rounded-lg border-2 transition-all duration-300 hover:scale-105 ${
+                      theme.isDark
+                        ? 'bg-gray-800/50 border-gray-700 hover:border-yellow-500'
+                        : 'bg-gray-50 border-gray-200 hover:border-yellow-500'
+                    }`}
                   >
-                    <TrendingUp className="h-4 w-4" />
-                  </Button>
-                </div>
-              </motion.div>
-            ))}
+                    <div className="flex items-center gap-3">
+                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-bold text-lg ${
+                        index < 3 ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white' : 'bg-gray-300 text-gray-700'
+                      }`}>
+                        #{index + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-sm truncate">{track.title}</h4>
+                        <p className="text-xs text-gray-500 truncate">{musicTrack.artist || track.description}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs bg-green-500/20 text-green-400 border-green-400">
+                            🎵 {musicTrack.album || 'Track'}
+                          </Badge>
+                          {musicTrack.duration && (
+                            <Badge variant="outline" className="text-xs bg-orange-500/20 text-orange-400 border-orange-400">
+                              ⏱️ {Math.floor(musicTrack.duration / 60)}:{String(musicTrack.duration % 60).padStart(2, '0')}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-green-500 hover:bg-green-500/20"
+                        onClick={() => console.log(`Playing ${track.title}`)}
+                      >
+                        <TrendingUp className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </motion.div>
+                );
+              })
+            ) : (
+              // Fallback to placeholder data if no tracks available
+              Array.from({ length: 6 }).map((_, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className={`p-4 rounded-lg border-2 transition-all duration-300 hover:scale-105 ${
+                    theme.isDark
+                      ? 'bg-gray-800/50 border-gray-700 hover:border-yellow-500'
+                      : 'bg-gray-50 border-gray-200 hover:border-yellow-500'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-bold text-lg ${
+                      index < 3 ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white' : 'bg-gray-300 text-gray-700'
+                    }`}>
+                      #{index + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-sm truncate">Loading Track {index + 1}...</h4>
+                      <p className="text-xs text-gray-500 truncate">Artist Name</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className="text-xs bg-green-500/20 text-green-400 border-green-400">
+                          🎵 1.2B
+                        </Badge>
+                        <Badge variant="outline" className="text-xs bg-orange-500/20 text-orange-400 border-orange-400">
+                          📈 +18%
+                        </Badge>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-green-500 hover:bg-green-500/20"
+                      onClick={() => console.log(`Playing Track ${index + 1}`)}
+                    >
+                      <TrendingUp className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </motion.div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>

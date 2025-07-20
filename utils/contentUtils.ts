@@ -17,14 +17,19 @@ export function ensureUniqueIds(items: ContentItem[], prefix?: string): ContentI
   items.forEach((item, index) => {
     let uniqueId = item.id;
     
-    // If we've seen this ID before, make it unique
-    if (seenIds.has(item.id)) {
-      uniqueId = prefix ? `${prefix}-${item.id}-${index}` : `${item.id}-${index}`;
+    // Add prefix if provided
+    if (prefix) {
+      uniqueId = `${prefix}-${item.id}`;
     }
     
-    // If the generated ID is still not unique (edge case), add timestamp
+    // If we've seen this ID before, make it unique with index
     if (seenIds.has(uniqueId)) {
-      uniqueId = `${uniqueId}-${Date.now()}`;
+      uniqueId = `${uniqueId}-${index}`;
+    }
+    
+    // If the generated ID is still not unique (edge case), add timestamp and random
+    if (seenIds.has(uniqueId)) {
+      uniqueId = `${uniqueId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     }
     
     seenIds.add(uniqueId);
@@ -44,28 +49,30 @@ export function combineWithUniqueIds(
 ): ContentItem[] {
   const seenIds = new Set<string>();
   const combinedItems: ContentItem[] = [];
+  let globalIndex = 0; // Global counter to ensure uniqueness
 
   itemArrays.forEach(({ items, prefix }) => {
-    items.forEach((item, index) => {
+    items.forEach((item, localIndex) => {
       let uniqueId = item.id;
       
-      // Always add prefix if provided
+      // Always add prefix if provided to categorize the source
       if (prefix) {
         uniqueId = `${prefix}-${item.id}`;
       }
       
-      // If ID is still not unique, add index
+      // If ID is still not unique, add global index
       if (seenIds.has(uniqueId)) {
-        uniqueId = `${uniqueId}-${index}`;
+        uniqueId = `${uniqueId}-${globalIndex}`;
       }
       
-      // Final fallback with timestamp
+      // Final fallback with timestamp and random number
       if (seenIds.has(uniqueId)) {
-        uniqueId = `${uniqueId}-${Date.now()}`;
+        uniqueId = `${uniqueId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       }
       
       seenIds.add(uniqueId);
       combinedItems.push({ ...item, id: uniqueId });
+      globalIndex++;
     });
   });
 

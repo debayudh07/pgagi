@@ -116,6 +116,13 @@ export interface PaginationState {
   hasPreviousPage: boolean;
 }
 
+export interface ContentTypePagination {
+  news: PaginationState & { totalItems: number; isLoadingMore: boolean };
+  movies: PaginationState & { totalItems: number; isLoadingMore: boolean };
+  music: PaginationState & { totalItems: number; isLoadingMore: boolean };
+  social: PaginationState & { totalItems: number; isLoadingMore: boolean };
+}
+
 // Spotify SDK Types
 declare global {
   interface Window {

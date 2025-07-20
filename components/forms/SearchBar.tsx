@@ -96,37 +96,37 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   const hasActiveFilters = filters.type || filters.category || localQuery.trim();
 
   return (
-    <div className="w-full space-y-4 p-4 md:p-6">
-      {/* Main Search Bar */}
+    <div className="w-full space-y-2 sm:space-y-4">
+      {/* Main Search Bar - Mobile Responsive */}
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-orange-500 h-5 w-5 z-10" />
+        <Search className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 text-orange-500 h-4 w-4 sm:h-5 sm:w-5 z-10" />
         <Input
           type="text"
           placeholder={placeholder}
           value={localQuery}
           onChange={handleInputChange}
-          className={`pl-12 pr-20 h-12 md:h-14 backdrop-blur-sm border-2 focus:shadow-lg ${theme.transition} rounded-lg font-medium text-sm md:text-base ${
+          className={`pl-8 sm:pl-12 pr-16 sm:pr-20 h-10 sm:h-12 md:h-14 backdrop-blur-sm border-2 focus:shadow-lg ${theme.transition} rounded-lg font-medium text-sm md:text-base ${
             theme.isDark
               ? 'bg-black/50 border-orange-500/50 text-white placeholder:text-gray-400 focus:border-orange-500 focus:shadow-orange-500/30'
               : 'bg-white/50 border-orange-400/50 text-gray-900 placeholder:text-gray-500 focus:border-orange-600 focus:shadow-orange-600/30'
           }`}
         />
-        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+        <div className="absolute right-1 sm:right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1 sm:gap-2">
           {hasActiveFilters && (
             <Button
               variant="ghost"
               size="sm"
               onClick={clearFilters}
-              className="h-8 w-8 p-0 bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/50 hover:border-red-500 transition-all duration-300 transform hover:scale-110"
+              className="h-6 w-6 sm:h-8 sm:w-8 p-0 bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/50 hover:border-red-500 transition-all duration-300 transform active:scale-95 sm:hover:scale-110"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3 w-3 sm:h-4 sm:w-4" />
             </Button>
           )}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setShowFilters(!showFilters)}
-            className={`h-8 w-8 p-0 border-2 transition-all duration-300 transform hover:scale-110 ${
+            className={`h-6 w-6 sm:h-8 sm:w-8 p-0 border-2 transition-all duration-300 transform active:scale-95 sm:hover:scale-110 ${
               showFilters 
                 ? 'bg-orange-500 text-black border-white' 
                 : theme.isDark
@@ -134,36 +134,39 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                   : 'bg-white/50 text-orange-600 border-orange-400/50 hover:bg-orange-100 hover:border-orange-600'
             }`}
           >
-            <Filter className="h-4 w-4" />
+            <Filter className="h-3 w-3 sm:h-4 sm:w-4" />
           </Button>
         </div>
       </div>
 
-      {/* Loading Indicator */}
+      {/* Loading Indicator - Mobile Responsive */}
       {loading.isLoading && (
-        <div className="flex items-center justify-center py-4">
-          <div className="animate-spin rounded-full h-6 w-6 border-2 border-orange-500 border-t-transparent"></div>
-          <span className="ml-3 text-sm md:text-base text-orange-500 font-bold">⚡ SEARCHING THE UNIVERSE...</span>
+        <div className="flex items-center justify-center py-2 sm:py-4">
+          <div className="animate-spin rounded-full h-4 w-4 sm:h-6 sm:w-6 border-2 border-orange-500 border-t-transparent"></div>
+          <span className="ml-2 sm:ml-3 text-xs sm:text-sm md:text-base text-orange-500 font-bold">
+            <span className="hidden sm:inline">⚡ SEARCHING THE UNIVERSE...</span>
+            <span className="sm:hidden">⚡ SEARCHING...</span>
+          </span>
         </div>
       )}
 
-      {/* Filters Panel */}
+      {/* Filters Panel - Mobile Responsive */}
       {showFilters && (
-        <Card className={`backdrop-blur-xl border-4 shadow-2xl ${theme.transition} ${
+        <Card className={`backdrop-blur-xl border-2 sm:border-4 shadow-2xl ${theme.transition} ${
           theme.isDark
             ? 'bg-black/80 border-orange-500 shadow-orange-500/20 hover:shadow-orange-500/40'
             : 'bg-white/80 border-orange-600 shadow-orange-600/20 hover:shadow-orange-600/40'
         }`}>
-          <CardContent className="p-4 md:p-6 space-y-6">
+          <CardContent className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
             {/* Content Type Filters */}
-            <div className="space-y-3">
-              <h4 className="text-sm md:text-base font-black text-orange-500 uppercase tracking-wider">🎯 CONTENT TYPE</h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+            <div className="space-y-2 sm:space-y-3">
+              <h4 className="text-xs sm:text-sm md:text-base font-black text-orange-500 uppercase tracking-wider">🎯 CONTENT TYPE</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 sm:gap-2 md:gap-3">
                 {contentTypes.map((type) => (
                   <Badge
                     key={type.value}
                     variant={filters.type === type.value ? 'default' : 'outline'}
-                    className={`cursor-pointer transition-all duration-300 transform hover:scale-105 p-2 md:p-3 text-xs md:text-sm font-bold border-2 ${
+                    className={`cursor-pointer transition-all duration-300 transform active:scale-95 sm:hover:scale-105 p-1 sm:p-2 md:p-3 text-xs md:text-sm font-bold border-2 ${
                       filters.type === type.value
                         ? 'bg-orange-500 text-black border-white shadow-lg'
                         : theme.isDark
@@ -172,22 +175,22 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                     }`}
                     onClick={() => handleTypeFilter(type.value)}
                   >
-                    <span className="text-base md:text-lg">{type.icon}</span>
-                    <span className="ml-1 md:ml-2">{type.label}</span>
+                    <span className="text-sm sm:text-base md:text-lg">{type.icon}</span>
+                    <span className="ml-1 hidden xs:inline">{type.label}</span>
                   </Badge>
                 ))}
               </div>
             </div>
 
             {/* Category Filters */}
-            <div className="space-y-3">
-              <h4 className="text-sm md:text-base font-black text-orange-500 uppercase tracking-wider">🏷️ CATEGORY</h4>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
-                {categories.map((category) => (
+            <div className="space-y-2 sm:space-y-3">
+              <h4 className="text-xs sm:text-sm md:text-base font-black text-orange-500 uppercase tracking-wider">🏷️ CATEGORY</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1 sm:gap-2 md:gap-3">
+                {categories.slice(0, 6).map((category) => (
                   <Badge
                     key={category}
                     variant={filters.category === category ? 'default' : 'outline'}
-                    className={`cursor-pointer transition-all duration-300 transform hover:scale-105 p-2 md:p-3 text-xs md:text-sm font-bold border-2 capitalize ${
+                    className={`cursor-pointer transition-all duration-300 transform active:scale-95 sm:hover:scale-105 p-1 sm:p-2 md:p-3 text-xs md:text-sm font-bold border-2 capitalize ${
                       filters.category === category
                         ? 'bg-orange-500 text-black border-white shadow-lg'
                         : theme.isDark
