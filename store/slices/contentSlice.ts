@@ -223,7 +223,7 @@ export const fetchTrendingContent = createAsyncThunk(
       // Fetch social posts from SocialService
       console.log('🔥 Fetching trending social posts...');
       try {
-        const socialResponse = await SocialService.getTrendingPosts('twitter');
+        const socialResponse = await SocialService.getTrendingPosts('instagram');
         if (socialResponse.status === 'success' && socialResponse.data) {
           console.log(`🔥 Got ${socialResponse.data.length} trending social posts`);
           itemArrays.push({ items: socialResponse.data, prefix: 'social' });
@@ -662,7 +662,7 @@ export const fetchSocial = createAsyncThunk(
           title: 'Viral Post: Amazing Discovery',
           description: 'This incredible discovery is taking social media by storm...',
           image: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=500',
-          platform: 'twitter' as const,
+          platform: 'instagram' as const,
           username: 'Science Explorer',
           likes: 15420,
           comments: 892,

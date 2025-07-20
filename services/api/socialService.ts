@@ -3,7 +3,7 @@ import { SocialPost, ApiResponse } from '../../types';
 export interface SocialApiParams {
   hashtag?: string;
   username?: string;
-  platform?: 'twitter' | 'instagram' | 'facebook';
+  platform?: 'instagram' | 'facebook';
   limit?: number;
 }
 
@@ -41,7 +41,7 @@ export class SocialService {
     }
   }
 
-  static async searchPosts(query: string, platform?: 'twitter' | 'instagram' | 'facebook'): Promise<ApiResponse<SocialPost[]>> {
+  static async searchPosts(query: string, platform?: 'instagram' | 'facebook'): Promise<ApiResponse<SocialPost[]>> {
     try {
       await new Promise(resolve => setTimeout(resolve, 300));
 
@@ -67,7 +67,7 @@ export class SocialService {
     }
   }
 
-  static async getTrendingPosts(platform?: 'twitter' | 'instagram' | 'facebook'): Promise<ApiResponse<SocialPost[]>> {
+  static async getTrendingPosts(platform?: 'instagram' | 'facebook'): Promise<ApiResponse<SocialPost[]>> {
     try {
       await new Promise(resolve => setTimeout(resolve, 400));
 
@@ -92,22 +92,8 @@ export class SocialService {
     }
   }
 
-  private static getMockPosts(platform?: 'twitter' | 'instagram' | 'facebook'): SocialPost[] {
+  private static getMockPosts(platform?: 'instagram' | 'facebook'): SocialPost[] {
     const allPosts: SocialPost[] = [
-      {
-        id: 'social1',
-        type: 'social',
-        platform: 'twitter',
-        title: 'Just discovered an amazing new AI tool!',
-        description: 'This AI-powered productivity app is a game changer for content creators. The features are incredible! #AI #productivity #tech',
-        image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400',
-        url: 'https://twitter.com/example/status/1',
-        publishedAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
-        username: 'techexplorer',
-        likes: 127,
-        comments: 23,
-        hashtags: ['AI', 'productivity', 'tech'],
-      },
       {
         id: 'social2',
         type: 'social',
@@ -121,20 +107,6 @@ export class SocialService {
         likes: 284,
         comments: 31,
         hashtags: ['remotework', 'coding', 'sunset', 'worklife'],
-      },
-      {
-        id: 'social3',
-        type: 'social',
-        platform: 'twitter',
-        title: 'New JavaScript framework comparison',
-        description: 'Just published a detailed comparison of React vs Vue vs Svelte in 2024. Link in bio! Which one do you prefer? #javascript #webdev #react #vue #svelte',
-        image: 'https://images.unsplash.com/photo-1627398242454-45a1465c2479?w=400',
-        url: 'https://twitter.com/example/status/2',
-        publishedAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(), // 1 hour ago
-        username: 'webdevguru',
-        likes: 456,
-        comments: 67,
-        hashtags: ['javascript', 'webdev', 'react', 'vue', 'svelte'],
       },
       {
         id: 'social4',

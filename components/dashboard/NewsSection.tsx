@@ -244,30 +244,7 @@ export const NewsSection: React.FC<NewsSectionProps> = ({ onContentAction }) => 
         </Card>
       )}
 
-      {/* Error State */}
-      {loading.error && (
-        <Card className={`backdrop-blur-xl border-2 shadow-lg ${theme.transitionColors} ${
-          theme.isDark
-            ? 'bg-black/80 border-red-500 shadow-red-500/20'
-            : 'bg-white/90 border-red-600 shadow-red-600/20'
-        }`}>
-          <CardContent className="p-6 md:p-8">
-            <div className="text-center">
-              <span className="text-4xl mb-4 block">💥</span>
-              <h3 className="font-black text-xl text-red-400 mb-2">NEWS FEED ERROR!</h3>
-              <p className={`font-bold mb-4 transition-colors duration-300 ${
-                theme.isDark ? 'text-white' : 'text-gray-900'
-              }`}>{loading.error}</p>
-              <Button 
-                onClick={handleRefresh} 
-                className="bg-red-500 hover:bg-red-600 text-white border-2 border-red-400 font-bold transform hover:scale-105 transition-all duration-300"
-              >
-                🔄 TRY AGAIN
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      
 
       {/* Content Grid */}
       <motion.div

@@ -76,7 +76,7 @@ export interface SpotifyTopArtistWithTracks {
 
 export interface SocialPost extends ContentItem {
   type: 'social';
-  platform: 'twitter' | 'instagram' | 'facebook';
+  platform: 'instagram' | 'facebook';
   username: string;
   likes?: number;
   comments?: number;
