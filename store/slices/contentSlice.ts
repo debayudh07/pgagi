@@ -4,6 +4,7 @@ import { MovieService } from '../../services/api/movieService';
 import { NewsService } from '../../services/api/newsService';
 import { MusicService } from '../../services/api/musicService';
 import { SocialService } from '../../services/api/socialService';
+import { TwitterService } from '../../services/api/twitterService';
 import { SpotifyUserService } from '../../services/api/spotifyUserService';
 import { combineWithUniqueIds, ensureUniqueIds } from '../../utils/contentUtils';
 
@@ -17,6 +18,14 @@ interface ContentState {
   movies: ContentItem[];
   music: ContentItem[];
   social: ContentItem[];
+  // Persistent ordering for each content type
+  contentOrder: {
+    movies: string[]; // Array of movie IDs in preferred order
+    news: string[]; // Array of news IDs in preferred order
+    music: string[]; // Array of music IDs in preferred order
+    social: string[]; // Array of social IDs in preferred order
+    feed: string[]; // Array of feed IDs in preferred order
+  };
   // Spotify-specific data
   topArtists: SpotifyArtist[];
   topArtistsWithTracks: SpotifyTopArtistWithTracks[];
@@ -54,6 +63,14 @@ const initialState: ContentState = {
   movies: [],
   music: [],
   social: [],
+  // Persistent ordering for each content type
+  contentOrder: {
+    movies: [],
+    news: [],
+    music: [],
+    social: [],
+    feed: [],
+  },
   // Spotify-specific data
   topArtists: [],
   topArtistsWithTracks: [],
@@ -179,6 +196,48 @@ export const fetchTrendingContent = createAsyncThunk(
       const tvShowsResponse = await MovieService.getTopRatedTVShows();
       if (tvShowsResponse.status === 'success' && tvShowsResponse.data) {
         itemArrays.push({ items: tvShowsResponse.data.slice(0, 5), prefix: 'tv' });
+      }
+
+      // Fetch trending Twitter posts
+      console.log('🔥 Fetching trending Twitter posts...');
+      const twitterResponse = await TwitterService.getTrendingTwitterPosts({ 
+        maxResults: 8,
+        excludeReplies: true 
+      });
+      if (twitterResponse.status === 'success' && twitterResponse.data) {
+        console.log(`🔥 Got ${twitterResponse.data.length} trending Twitter posts`);
+        itemArrays.push({ items: twitterResponse.data, prefix: 'twitter' });
+      } else if (twitterResponse.data && twitterResponse.data.length > 0) {
+        // Include mock/fallback data even if status is error
+        console.log(`🔥 Got ${twitterResponse.data.length} fallback Twitter posts`);
+        itemArrays.push({ items: twitterResponse.data, prefix: 'twitter' });
+      }
+
+      // Fetch top music tracks
+      console.log('🔥 Fetching trending music tracks...');
+      try {
+        const musicResponse = await MusicService.getTopTracks({ 
+          limit: 6,
+          market: 'US' 
+        });
+        if (musicResponse.status === 'success' && musicResponse.data) {
+          console.log(`🔥 Got ${musicResponse.data.length} trending music tracks`);
+          itemArrays.push({ items: musicResponse.data, prefix: 'music' });
+        }
+      } catch (musicError) {
+        console.warn('🔥 Failed to fetch music tracks for trending:', musicError);
+      }
+
+      // Fetch social posts from SocialService
+      console.log('🔥 Fetching trending social posts...');
+      try {
+        const socialResponse = await SocialService.getTrendingPosts('twitter');
+        if (socialResponse.status === 'success' && socialResponse.data) {
+          console.log(`🔥 Got ${socialResponse.data.length} trending social posts`);
+          itemArrays.push({ items: socialResponse.data, prefix: 'social' });
+        }
+      } catch (socialError) {
+        console.warn('🔥 Failed to fetch social posts for trending:', socialError);
       }
 
       // Combine all items with unique IDs
@@ -568,6 +627,41 @@ export const fetchSocial = createAsyncThunk(
   }
 );
 
+// Twitter-specific async thunk
+export const fetchTwitterPosts = createAsyncThunk(
+  'content/fetchTwitterPosts',
+  async (params: { maxResults?: number } = {}, { rejectWithValue }) => {
+    try {
+      console.log('🐦 ContentSlice: Fetching Twitter posts...');
+      
+      // Initialize Twitter service
+      TwitterService.initializeAuth();
+      
+      if (!TwitterService.isAuthenticated()) {
+        console.warn('🐦 Twitter not authenticated, returning empty array');
+        return [];
+      }
+      
+      const response = await TwitterService.getUserTweets({
+        maxResults: params.maxResults || 10,
+        excludeReplies: true,
+        includeRetweets: false,
+      });
+      
+      if (response.status === 'success') {
+        console.log(`🐦 ContentSlice: Successfully fetched ${response.data.length} Twitter posts`);
+        return ensureUniqueIds(response.data as ContentItem[], 'twitter');
+      } else {
+        console.error('🐦 Twitter API error:', response.message);
+        return rejectWithValue(response.message || 'Failed to fetch Twitter posts');
+      }
+    } catch (error) {
+      console.error('🐦 Error fetching Twitter posts:', error);
+      return rejectWithValue('Failed to fetch Twitter posts');
+    }
+  }
+);
+
 const contentSlice = createSlice({
   name: 'content',
   initialState,
@@ -612,6 +706,27 @@ const contentSlice = createSlice({
       const { oldIndex, newIndex } = action.payload;
       const [removed] = state.feed.splice(oldIndex, 1);
       state.feed.splice(newIndex, 0, removed);
+      
+      // Update persistent ordering
+      state.contentOrder.feed = state.feed.map(item => item.id);
+    },
+    reorderContentItems: (state, action: PayloadAction<{ 
+      contentType: 'movies' | 'news' | 'music' | 'social'; 
+      oldIndex: number; 
+      newIndex: number 
+    }>) => {
+      // Temporarily disabled to prevent state access errors
+      // TODO: Implement proper reordering functionality
+      console.log('ℹ️ ContentSlice: reorderContentItems called but temporarily disabled');
+      return;
+    },
+    applyContentOrder: (state, action: PayloadAction<{ 
+      contentType: 'movies' | 'news' | 'music' | 'social' | 'feed' 
+    }>) => {
+      // Temporarily disabled to prevent state access errors
+      // TODO: Implement proper ordering functionality
+      console.log('ℹ️ ContentSlice: applyContentOrder called but temporarily disabled');
+      return;
     },
     setSearchQuery: (state, action: PayloadAction<string>) => {
       state.searchQuery = action.payload;
@@ -726,7 +841,9 @@ const contentSlice = createSlice({
       })
       .addCase(fetchMovies.fulfilled, (state, action) => {
         state.loading.isLoading = false;
-        state.movies = action.payload;
+        // Ensure we always have an array, even if payload is undefined
+        state.movies = Array.isArray(action.payload) ? action.payload : [];
+        console.log('🎬 ContentSlice: Movies fetched successfully, count:', state.movies.length);
       })
       .addCase(fetchMovies.rejected, (state, action) => {
         state.loading.isLoading = false;
@@ -740,7 +857,9 @@ const contentSlice = createSlice({
       })
       .addCase(fetchNews.fulfilled, (state, action) => {
         state.loading.isLoading = false;
-        state.news = action.payload;
+        // Ensure we always have an array, even if payload is undefined
+        state.news = Array.isArray(action.payload) ? action.payload : [];
+        console.log('📰 ContentSlice: News fetched successfully, count:', state.news.length);
       })
       .addCase(fetchNews.rejected, (state, action) => {
         state.loading.isLoading = false;
@@ -754,7 +873,9 @@ const contentSlice = createSlice({
       })
       .addCase(fetchMusic.fulfilled, (state, action) => {
         state.loading.isLoading = false;
-        state.music = action.payload;
+        // Ensure we always have an array, even if payload is undefined
+        state.music = Array.isArray(action.payload) ? action.payload : [];
+        console.log('🎵 ContentSlice: Music fetched successfully, count:', state.music.length);
       })
       .addCase(fetchMusic.rejected, (state, action) => {
         state.loading.isLoading = false;
@@ -838,11 +959,34 @@ const contentSlice = createSlice({
       })
       .addCase(fetchSocial.fulfilled, (state, action) => {
         state.loading.isLoading = false;
-        state.social = action.payload;
+        // Ensure we always have an array, even if payload is undefined
+        state.social = Array.isArray(action.payload) ? action.payload : [];
+        console.log('📱 ContentSlice: Social content fetched successfully, count:', state.social.length);
       })
       .addCase(fetchSocial.rejected, (state, action) => {
         state.loading.isLoading = false;
         state.loading.error = action.payload as string;
+      });
+
+    // Fetch Twitter Posts
+    builder
+      .addCase(fetchTwitterPosts.pending, (state) => {
+        state.loading.isLoading = true;
+      })
+      .addCase(fetchTwitterPosts.fulfilled, (state, action) => {
+        state.loading.isLoading = false;
+        // Merge Twitter posts with existing social content
+        const twitterPosts = Array.isArray(action.payload) ? action.payload : [];
+        // Remove any existing Twitter posts first to avoid duplicates
+        state.social = state.social.filter(post => !post.id.startsWith('twitter-'));
+        // Add new Twitter posts
+        state.social = [...twitterPosts, ...state.social];
+        console.log('🐦 ContentSlice: Twitter posts fetched successfully, count:', twitterPosts.length);
+      })
+      .addCase(fetchTwitterPosts.rejected, (state, action) => {
+        state.loading.isLoading = false;
+        state.loading.error = action.payload as string;
+        console.error('🐦 ContentSlice: Failed to fetch Twitter posts:', action.payload);
       });
 
     // User Spotify reducers
@@ -912,6 +1056,8 @@ export const {
   addToFavorites,
   removeFromFavorites,
   reorderFeedItems,
+  reorderContentItems,
+  applyContentOrder,
   setSearchQuery,
   setActiveFilters,
   clearSearchResults,

@@ -33,7 +33,26 @@ export const ContentCard: React.FC<ContentCardProps> = ({ item, onAction }) => {
   };
 
   const handleAction = (action: string) => {
+    console.log('🎬 ContentCard: Action triggered:', action, 'for item:', item.id, item.title);
     onAction?.(action, item);
+  };
+
+  const handleViewClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('👁️ ContentCard: View button clicked for:', item.id, item.title);
+    handleAction('view');
+  };
+
+  const handleExternalLink = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('🔗 ContentCard: Opening external link:', item.url);
+    if (item.url) {
+      window.open(item.url, '_blank', 'noopener,noreferrer');
+    } else {
+      console.warn('⚠️ ContentCard: No URL available for item:', item.id);
+    }
   };
 
   const getTypeColor = (type: ContentItem['type']) => {
@@ -70,8 +89,26 @@ export const ContentCard: React.FC<ContentCardProps> = ({ item, onAction }) => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      whileHover={{ y: -4, scale: 1.02 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ 
+        duration: 0.4,
+        ease: [0.25, 0.1, 0.25, 1],
+        type: 'spring',
+        damping: 20,
+        stiffness: 300
+      }}
+      whileHover={{ 
+        y: -6, 
+        scale: 1.02,
+        transition: { 
+          duration: 0.2,
+          ease: [0.25, 0.1, 0.25, 1]
+        }
+      }}
+      whileTap={{ 
+        scale: 0.98,
+        transition: { duration: 0.1 }
+      }}
       className="h-full"
     >
       <Card className={`h-full flex flex-col overflow-hidden backdrop-blur-xl border-2 shadow-lg ${theme.transition} ${
@@ -234,7 +271,7 @@ export const ContentCard: React.FC<ContentCardProps> = ({ item, onAction }) => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleAction('view')}
+              onClick={handleViewClick}
               className="flex-1 border-2 border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white font-bold transition-all duration-300 transform hover:scale-105"
             >
               <Eye className="h-4 w-4 mr-2" />
@@ -244,7 +281,7 @@ export const ContentCard: React.FC<ContentCardProps> = ({ item, onAction }) => {
               <Button
                 variant="default"
                 size="sm"
-                onClick={() => window.open(item.url, '_blank')}
+                onClick={handleExternalLink}
                 className="flex-1 bg-orange-500 hover:bg-orange-600 text-white border-2 border-orange-400 font-bold transition-all duration-300 transform hover:scale-105"
               >
                 <ExternalLink className="h-4 w-4 mr-2" />

@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Users, Heart, MessageCircle, Share, RefreshCw } from 'lucide-react';
 import { ContentGrid } from '../content/ContentGrid';
+import { TwitterAuthButton } from '../auth/TwitterAuthButton';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
-import { fetchSocial } from '../../store/slices/contentSlice';
+import { fetchSocial, fetchTwitterPosts } from '../../store/slices/contentSlice';
+import { TwitterService } from '../../services/api/twitterService';
 import { useTheme } from '../../lib/useTheme';
 import { ContentItem } from '../../types';
 
@@ -20,21 +22,63 @@ export const SocialSection: React.FC<SocialSectionProps> = ({ onContentAction })
   const dispatch = useAppDispatch();
   const { social, loading } = useAppSelector(state => state.content);
   const theme = useTheme();
+  const [twitterPosts, setTwitterPosts] = useState<ContentItem[]>([]);
+  const [twitterLoading, setTwitterLoading] = useState(false);
+  const [showTwitterAuth, setShowTwitterAuth] = useState(true);
 
   useEffect(() => {
+    // Initialize Twitter service
+    TwitterService.initializeAuth();
+    setShowTwitterAuth(!TwitterService.isAuthenticated());
+    
+    // Load Twitter posts if authenticated
+    if (TwitterService.isAuthenticated()) {
+      loadTwitterPosts();
+    }
+
+    // Load regular social posts
     if (social.length === 0) {
       dispatch(fetchSocial({}));
     }
   }, [dispatch, social.length]);
 
+  const loadTwitterPosts = async () => {
+    setTwitterLoading(true);
+    try {
+      await dispatch(fetchTwitterPosts({ maxResults: 10 }));
+      console.log('🐦 Dispatched fetchTwitterPosts action');
+    } catch (error) {
+      console.error('Error loading Twitter posts:', error);
+    } finally {
+      setTwitterLoading(false);
+    }
+  };
+
+  const handleTwitterAuthSuccess = () => {
+    setShowTwitterAuth(false);
+    loadTwitterPosts();
+  };
+
+  const handleTwitterAuthError = (error: string) => {
+    console.error('Twitter auth error:', error);
+    // You could show a toast notification here
+  };
+
   const handleRefresh = () => {
     dispatch(fetchSocial({}));
+    if (TwitterService.isAuthenticated()) {
+      loadTwitterPosts();
+    }
   };
 
   const handleContentAction = (action: string, item: ContentItem) => {
     console.log(`Social action: ${action} on item:`, item);
     onContentAction?.(action, item);
   };
+
+  // Combine Twitter posts with regular social posts
+  const allSocialPosts = [...twitterPosts, ...social];
+  const isLoadingAny = loading.isLoading || twitterLoading;
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -51,23 +95,42 @@ export const SocialSection: React.FC<SocialSectionProps> = ({ onContentAction })
               📱 SOCIAL BUZZ
             </h1>
             <p className="text-orange-500 font-bold mt-1">
-              {social.length} viral {social.length === 1 ? 'post' : 'posts'} and interactions 💬
+              {allSocialPosts.length} viral {allSocialPosts.length === 1 ? 'post' : 'posts'} and interactions 💬
+              {twitterPosts.length > 0 && (
+                <span className="text-blue-400 ml-2">
+                  (🐦 {twitterPosts.length} from Twitter)
+                </span>
+              )}
             </p>
           </div>
         </div>
         <Button
           variant="outline"
           onClick={handleRefresh}
-          disabled={loading.isLoading}
+          disabled={isLoadingAny}
           className="gap-2 border-2 border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white font-bold transition-all duration-300 transform hover:scale-105"
         >
-          <RefreshCw className={`h-4 w-4 ${loading.isLoading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 ${isLoadingAny ? 'animate-spin' : ''}`} />
           🔄 REFRESH
         </Button>
       </div>
 
+      {/* Twitter Authentication */}
+      {showTwitterAuth && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <TwitterAuthButton
+            onAuthSuccess={handleTwitterAuthSuccess}
+            onAuthError={handleTwitterAuthError}
+          />
+        </motion.div>
+      )}
+
       {/* Loading State */}
-      {loading.isLoading && social.length === 0 && (
+      {isLoadingAny && allSocialPosts.length === 0 && (
         <Card className={`backdrop-blur-xl border-2 shadow-lg ${theme.transitionColors} ${
           theme.isDark
             ? 'bg-black/80 border-purple-500 shadow-purple-500/20'
@@ -126,10 +189,13 @@ export const SocialSection: React.FC<SocialSectionProps> = ({ onContentAction })
           <h3 className={`text-lg md:text-xl font-black transition-colors duration-300 ${
             theme.isDark ? 'text-white' : 'text-gray-900'
           }`}>SOCIAL FEED</h3>
-          <Badge className="bg-purple-500/80 text-white border-purple-400 font-bold">{social.length}</Badge>
+          <Badge className="bg-purple-500/80 text-white border-purple-400 font-bold">{allSocialPosts.length}</Badge>
+          {twitterPosts.length > 0 && (
+            <Badge className="bg-blue-500/80 text-white border-blue-400 font-bold">🐦 {twitterPosts.length}</Badge>
+          )}
         </div>
         <ContentGrid
-          items={social}
+          items={allSocialPosts}
           onAction={handleContentAction}
           enableDragDrop={false}
           className="min-h-[400px]"
@@ -242,7 +308,12 @@ export const SocialSection: React.FC<SocialSectionProps> = ({ onContentAction })
               <div className="absolute inset-0 w-4 h-4 bg-purple-500 rounded-full"></div>
             </div>
             <span className="text-sm font-bold text-purple-400">
-              🌐 Social networks active - {social.length} posts synchronized
+              🌐 Social networks active - {allSocialPosts.length} posts synchronized
+              {TwitterService.isAuthenticated() && (
+                <span className="text-blue-400 ml-2">
+                  | 🐦 Twitter connected
+                </span>
+              )}
             </span>
           </div>
         </CardContent>

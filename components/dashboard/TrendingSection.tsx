@@ -21,7 +21,7 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({ onContentActio
   const dispatch = useAppDispatch();
   const { trending, loading, activeTab } = useAppSelector(state => state.content);
   const theme = useTheme();
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'news' | 'movie' | 'music' | 'social'>('all');
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'news' | 'movie'>('all');
 
   useEffect(() => {
     dispatch(fetchTrendingContent());
@@ -36,7 +36,7 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({ onContentActio
     onContentAction?.(action, item);
   };
 
-  const handleTabClick = (type: 'all' | 'news' | 'movie' | 'music' | 'social') => {
+  const handleTabClick = (type: 'all' | 'news' | 'movie') => {
     setSelectedFilter(type);
     console.log(`🔥 Filtering trending by: ${type}`);
   };
@@ -53,7 +53,6 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({ onContentActio
     byType: {
       news: trending.filter(item => item.type === 'news').length,
       movie: trending.filter(item => item.type === 'movie').length,
-      music: trending.filter(item => item.type === 'music').length,
       social: trending.filter(item => item.type === 'social').length,
     }
   });
@@ -123,32 +122,10 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({ onContentActio
         >
           🎬 MOVIES ({trending.filter(item => item.type === 'movie').length})
         </Button>
-        <Button
-          variant={selectedFilter === 'music' ? 'default' : 'outline'}
-          onClick={() => handleTabClick('music')}
-          className={`font-bold transition-all duration-300 ${
-            selectedFilter === 'music'
-              ? 'bg-green-500 text-white border-green-400'
-              : 'border-green-500 text-green-500 hover:bg-green-500 hover:text-white'
-          }`}
-        >
-          🎵 MUSIC ({trending.filter(item => item.type === 'music').length})
-        </Button>
-        <Button
-          variant={selectedFilter === 'social' ? 'default' : 'outline'}
-          onClick={() => handleTabClick('social')}
-          className={`font-bold transition-all duration-300 ${
-            selectedFilter === 'social'
-              ? 'bg-red-500 text-white border-red-400'
-              : 'border-red-500 text-red-500 hover:bg-red-500 hover:text-white'
-          }`}
-        >
-          📱 SOCIAL ({trending.filter(item => item.type === 'social').length})
-        </Button>
       </div>
 
       {/* Trending Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
         <Card 
           className={`backdrop-blur-xl border-2 shadow-lg transition-all duration-300 transform hover:scale-105 cursor-pointer ${
             selectedFilter === 'news' 
@@ -198,56 +175,6 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({ onContentActio
             </div>
           </CardContent>
         </Card>
-        
-        <Card 
-          className={`backdrop-blur-xl border-2 shadow-lg transition-all duration-300 transform hover:scale-105 cursor-pointer ${
-            selectedFilter === 'music' 
-              ? 'border-green-400 shadow-green-500/40 bg-green-500/10' 
-              : theme.isDark
-                ? 'bg-black/80 border-orange-500 shadow-green-500/20 hover:shadow-green-500/40'
-                : 'bg-white/90 border-orange-600 shadow-green-600/20 hover:shadow-green-600/40'
-          }`}
-          onClick={() => handleTabClick('music')}
-        >
-          <CardContent className="p-3 md:p-4">
-            <div className="flex items-center gap-2 md:gap-3">
-              <span className="text-2xl md:text-3xl">🎵</span>
-              <div>
-                <p className="font-black text-lg md:text-xl text-green-400">
-                  {trending.filter(item => item.type === 'music').length}
-                </p>
-                <p className={`text-xs md:text-sm font-bold transition-colors duration-300 ${
-                  theme.isDark ? 'text-white' : 'text-gray-700'
-                }`}>Viral Beats</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card 
-          className={`backdrop-blur-xl border-2 shadow-lg transition-all duration-300 transform hover:scale-105 cursor-pointer ${
-            selectedFilter === 'social' 
-              ? 'border-red-400 shadow-red-500/40 bg-red-500/10' 
-              : theme.isDark
-                ? 'bg-black/80 border-orange-500 shadow-red-500/20 hover:shadow-red-500/40'
-                : 'bg-white/90 border-orange-600 shadow-red-600/20 hover:shadow-red-600/40'
-          }`}
-          onClick={() => handleTabClick('social')}
-        >
-          <CardContent className="p-3 md:p-4">
-            <div className="flex items-center gap-2 md:gap-3">
-              <span className="text-2xl md:text-3xl">📱</span>
-              <div>
-                <p className="font-black text-lg md:text-xl text-red-400">
-                  {trending.filter(item => item.type === 'social').length}
-                </p>
-                <p className={`text-xs md:text-sm font-bold transition-colors duration-300 ${
-                  theme.isDark ? 'text-white' : 'text-gray-700'
-                }`}>Viral Posts</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Top Tracks Section */}
@@ -267,16 +194,17 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({ onContentActio
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Mock trending tracks data */}
-            {[
+            {/*
               { id: 1, title: "Flowers", artist: "Miley Cyrus", plays: "2.1B", trend: "+15%" },
               { id: 2, title: "Anti-Hero", artist: "Taylor Swift", plays: "1.8B", trend: "+12%" },
               { id: 3, title: "As It Was", artist: "Harry Styles", plays: "1.6B", trend: "+8%" },
               { id: 4, title: "Unholy", artist: "Sam Smith ft. Kim Petras", plays: "1.4B", trend: "+22%" },
               { id: 5, title: "Bad Habit", artist: "Steve Lacy", plays: "1.2B", trend: "+18%" },
               { id: 6, title: "Watermelon Sugar", artist: "Harry Styles", plays: "1.1B", trend: "+5%" },
-            ].map((track, index) => (
+            */}
+            {Array.from({ length: 6 }).map((_, index) => (
               <motion.div
-                key={track.id}
+                key={index}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
@@ -293,14 +221,14 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({ onContentActio
                     #{index + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-sm truncate">{track.title}</h4>
-                    <p className="text-xs text-gray-500 truncate">{track.artist}</p>
+                    <h4 className="font-bold text-sm truncate">Track Title {index + 1}</h4>
+                    <p className="text-xs text-gray-500 truncate">Artist Name</p>
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant="outline" className="text-xs bg-green-500/20 text-green-400 border-green-400">
-                        🎵 {track.plays}
+                        🎵 1.2B
                       </Badge>
                       <Badge variant="outline" className="text-xs bg-orange-500/20 text-orange-400 border-orange-400">
-                        📈 {track.trend}
+                        📈 +18%
                       </Badge>
                     </div>
                   </div>
@@ -308,7 +236,7 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({ onContentActio
                     size="sm"
                     variant="ghost"
                     className="h-8 w-8 p-0 text-green-500 hover:bg-green-500/20"
-                    onClick={() => console.log(`Playing ${track.title} by ${track.artist}`)}
+                    onClick={() => console.log(`Playing Track Title ${index + 1}`)}
                   >
                     <TrendingUp className="h-4 w-4" />
                   </Button>
@@ -382,14 +310,12 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({ onContentActio
             {selectedFilter === 'all' ? 'VIRAL CONTENT' : 
              selectedFilter === 'news' ? 'BREAKING NEWS' :
              selectedFilter === 'movie' ? 'HOT MOVIES' :
-             selectedFilter === 'music' ? 'VIRAL BEATS' :
              'VIRAL POSTS'}
           </h3>
           <Badge className={`border font-bold ${
             selectedFilter === 'all' ? 'bg-orange-500/80 text-white border-orange-400' :
             selectedFilter === 'news' ? 'bg-blue-500/80 text-white border-blue-400' :
             selectedFilter === 'movie' ? 'bg-purple-500/80 text-white border-purple-400' :
-            selectedFilter === 'music' ? 'bg-green-500/80 text-white border-green-400' :
             'bg-red-500/80 text-white border-red-400'
           }`}>
             {filteredContent.length}
@@ -400,9 +326,7 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({ onContentActio
           <div className="text-center py-8">
             <span className="text-4xl mb-4 block">
               {selectedFilter === 'news' ? '📰' :
-               selectedFilter === 'movie' ? '🎬' :
-               selectedFilter === 'music' ? '🎵' :
-               selectedFilter === 'social' ? '📱' : '🔥'}
+               selectedFilter === 'movie' ? '🎬' : '🔥'}
             </span>
             <h3 className={`font-black text-xl mb-2 transition-colors duration-300 ${
               theme.isDark ? 'text-white' : 'text-gray-900'
