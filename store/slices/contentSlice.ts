@@ -42,6 +42,8 @@ interface ContentState {
   userDevices: any[];
   isSpotifyConnected: boolean;
   spotifyAccessToken: string | null;
+  // Twitter auth status
+  twitterAuthRequired: boolean;
   loading: LoadingState;
   pagination: PaginationState;
   searchQuery: string;
@@ -87,6 +89,8 @@ const initialState: ContentState = {
   userDevices: [],
   isSpotifyConnected: false,
   spotifyAccessToken: null,
+  // Twitter auth status
+  twitterAuthRequired: false,
   loading: {
     isLoading: false,
     error: null,
@@ -200,15 +204,25 @@ export const fetchTrendingContent = createAsyncThunk(
 
       // Fetch trending Twitter posts
       console.log('🔥 Fetching trending Twitter posts...');
+      // Initialize Twitter auth to check for existing tokens
+      TwitterService.initializeAuth();
+      
       const twitterResponse = await TwitterService.getTrendingTwitterPosts({ 
         maxResults: 8,
         excludeReplies: true 
       });
+      
+      // Track if Twitter authentication is required
+      let twitterAuthRequired = false;
+      
       if (twitterResponse.status === 'success' && twitterResponse.data) {
         console.log(`🔥 Got ${twitterResponse.data.length} trending Twitter posts`);
         itemArrays.push({ items: twitterResponse.data, prefix: 'twitter' });
+      } else if (twitterResponse.requiresAuth) {
+        twitterAuthRequired = true;
+        console.log('🔥 Twitter authentication required for trending posts');
       } else if (twitterResponse.data && twitterResponse.data.length > 0) {
-        // Include mock/fallback data even if status is error
+        // Include fallback data even if status is error
         console.log(`🔥 Got ${twitterResponse.data.length} fallback Twitter posts`);
         itemArrays.push({ items: twitterResponse.data, prefix: 'twitter' });
       }
@@ -247,7 +261,10 @@ export const fetchTrendingContent = createAsyncThunk(
       const shuffledResults = combinedResults.sort(() => Math.random() - 0.5);
       
       console.log(`🔥 Total trending items: ${shuffledResults.length}`);
-      return shuffledResults.slice(0, 20); // Return top 20 trending items
+      return { 
+        items: shuffledResults.slice(0, 20), // Return top 20 trending items
+        twitterAuthRequired 
+      };
     } catch (error) {
       console.error('Error fetching trending content:', error);
       return rejectWithValue('Failed to fetch trending content');
@@ -813,7 +830,8 @@ const contentSlice = createSlice({
       })
       .addCase(fetchTrendingContent.fulfilled, (state, action) => {
         state.loading.isLoading = false;
-        state.trending = action.payload;
+        state.trending = action.payload.items;
+        state.twitterAuthRequired = action.payload.twitterAuthRequired;
       })
       .addCase(fetchTrendingContent.rejected, (state, action) => {
         state.loading.isLoading = false;

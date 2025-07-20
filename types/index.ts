@@ -88,6 +88,7 @@ export interface ApiResponse<T> {
   totalResults?: number;
   status: 'success' | 'error';
   message?: string;
+  requiresAuth?: boolean;
 }
 
 export interface SearchParams {

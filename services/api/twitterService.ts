@@ -160,7 +160,12 @@ export class TwitterService {
   static async getUserTweets(params: TwitterApiParams = {}): Promise<ApiResponse<SocialPost[]>> {
     try {
       if (!this.isAuthenticated()) {
-        throw new Error('User not authenticated');
+        return {
+          data: [],
+          status: 'error',
+          message: 'User not authenticated',
+          requiresAuth: true,
+        };
       }
 
       const queryParams = new URLSearchParams({
@@ -194,11 +199,11 @@ export class TwitterService {
     } catch (error) {
       console.error('🐦 Twitter API Error:', error);
       
-      // Return mock data as fallback
       return {
-        data: this.getMockTwitterPosts(),
+        data: [],
         status: 'error',
         message: `Twitter API unavailable: ${error}`,
+        requiresAuth: true,
       };
     }
   }
@@ -250,10 +255,14 @@ export class TwitterService {
   // Get trending Twitter content for trending section
   static async getTrendingTwitterPosts(params: TwitterApiParams = {}): Promise<ApiResponse<SocialPost[]>> {
     try {
+      console.log('🔥 TwitterService: Fetching trending Twitter posts...');
+      
       let trendingPosts: SocialPost[] = [];
 
+      // Only try to fetch real data if user is authenticated
       if (this.isAuthenticated()) {
         try {
+          console.log('🔥 TwitterService: User is authenticated, fetching real tweets...');
           // Get user tweets as trending content when authenticated
           const result = await this.getUserTweets({
             ...params,
@@ -272,36 +281,44 @@ export class TwitterService {
             console.log(`🔥 TwitterService: Fetched ${trendingPosts.length} authenticated trending Twitter posts`);
           }
         } catch (authError) {
-          console.warn('🔥 Failed to fetch authenticated tweets, falling back to mock data:', authError);
+          console.warn('🔥 Failed to fetch authenticated tweets:', authError);
+          return {
+            data: [],
+            status: 'error',
+            totalResults: 0,
+            message: 'Twitter API error - please re-authenticate',
+            requiresAuth: true,
+          };
         }
+      } else {
+        console.log('🔥 TwitterService: User not authenticated');
+        return {
+          data: [],
+          status: 'error',
+          totalResults: 0,
+          message: 'Twitter authentication required',
+          requiresAuth: true,
+        };
       }
 
-      // Always include mock trending data to ensure we have content
-      const mockTrendingPosts = this.getMockTrendingTwitterPosts();
-      
-      // Combine real and mock data, or use mock data if no real data available
-      const allTrendingPosts = trendingPosts.length > 0 
-        ? [...trendingPosts, ...mockTrendingPosts.slice(0, 3)] // Add some mock data for variety
-        : mockTrendingPosts; // Use all mock data if no authenticated data
-
-      console.log(`🔥 TwitterService: Total trending posts: ${allTrendingPosts.length} (${trendingPosts.length} real, ${allTrendingPosts.length - trendingPosts.length} mock)`);
+      console.log(`🔥 TwitterService: Total trending posts: ${trendingPosts.length}`);
       
       return {
-        data: allTrendingPosts,
+        data: trendingPosts,
         status: 'success',
-        totalResults: allTrendingPosts.length,
-        message: trendingPosts.length > 0 ? 'Mixed real and mock data' : 'Mock data only',
+        totalResults: trendingPosts.length,
+        message: 'Authenticated Twitter posts',
+        requiresAuth: false,
       };
     } catch (error) {
       console.error('🔥 Twitter Trending Error:', error);
       
-      // Always return mock data as fallback
-      const mockPosts = this.getMockTrendingTwitterPosts();
       return {
-        data: mockPosts,
+        data: [],
         status: 'error',
-        totalResults: mockPosts.length,
-        message: `Twitter trending unavailable: ${error}`,
+        totalResults: 0,
+        message: `Twitter service unavailable: ${error}`,
+        requiresAuth: true,
       };
     }
   }
