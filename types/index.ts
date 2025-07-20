@@ -88,7 +88,6 @@ export interface ApiResponse<T> {
   totalResults?: number;
   status: 'success' | 'error';
   message?: string;
-  requiresAuth?: boolean;
 }
 
 export interface SearchParams {
@@ -115,4 +114,87 @@ export interface PaginationState {
   totalPages: number;
   hasNextPage: boolean;
   hasPreviousPage: boolean;
+}
+
+// Spotify SDK Types
+declare global {
+  interface Window {
+    Spotify: {
+      Player: new (options: SpotifyPlayerOptions) => SpotifyPlayer;
+    };
+    onSpotifyWebPlaybackSDKReady: () => void;
+  }
+}
+
+export interface SpotifyPlayerOptions {
+  name: string;
+  getOAuthToken: (cb: (token: string) => void) => void;
+  volume?: number;
+}
+
+export interface SpotifyPlayer {
+  addListener: (event: string, cb: (data: any) => void) => void;
+  removeListener: (event: string, cb?: (data: any) => void) => void;
+  connect: () => Promise<boolean>;
+  disconnect: () => void;
+  getCurrentState: () => Promise<SpotifyPlayerState | null>;
+  setName: (name: string) => Promise<void>;
+  getVolume: () => Promise<number>;
+  setVolume: (volume: number) => Promise<void>;
+  pause: () => Promise<void>;
+  resume: () => Promise<void>;
+  togglePlay: () => Promise<void>;
+  seek: (position: number) => Promise<void>;
+  previousTrack: () => Promise<void>;
+  nextTrack: () => Promise<void>;
+}
+
+export interface SpotifyPlayerState {
+  context: {
+    uri: string;
+    metadata: any;
+  };
+  disallows: {
+    pausing: boolean;
+    peeking_next: boolean;
+    peeking_prev: boolean;
+    resuming: boolean;
+    seeking: boolean;
+    skipping_next: boolean;
+    skipping_prev: boolean;
+  };
+  paused: boolean;
+  position: number;
+  repeat_mode: number;
+  shuffle: boolean;
+  track_window: {
+    current_track: SpotifyTrack;
+    next_tracks: SpotifyTrack[];
+    previous_tracks: SpotifyTrack[];
+  };
+}
+
+export interface SpotifyTrack {
+  id: string;
+  uri: string;
+  type: string;
+  linked_from_uri: string | null;
+  linked_from: any;
+  media_type: string;
+  name: string;
+  duration_ms: number;
+  artists: Array<{
+    name: string;
+    uri: string;
+  }>;
+  album: {
+    name: string;
+    uri: string;
+    images: Array<{
+      url: string;
+      height: number;
+      width: number;
+    }>;
+  };
+  is_playable: boolean;
 }

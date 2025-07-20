@@ -8,7 +8,6 @@ import { ContentGrid } from '../content/ContentGrid';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { TwitterAuthButton } from '../auth/TwitterAuthButton';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { fetchTrendingContent, setActiveTab } from '../../store/slices/contentSlice';
 import { useTheme } from '../../lib/useTheme';
@@ -20,7 +19,7 @@ interface TrendingSectionProps {
 
 export const TrendingSection: React.FC<TrendingSectionProps> = ({ onContentAction }) => {
   const dispatch = useAppDispatch();
-  const { trending, loading, activeTab, twitterAuthRequired } = useAppSelector(state => state.content);
+  const { trending, loading, activeTab } = useAppSelector(state => state.content);
   const theme = useTheme();
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'news' | 'movie'>('all');
 
@@ -346,42 +345,6 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({ onContentActio
             enableDragDrop={false}
             className="min-h-[400px]"
           />
-        )}
-        
-        {/* Twitter Authentication Section */}
-        {twitterAuthRequired && (
-          <Card className={`mt-6 backdrop-blur-xl border-2 shadow-lg transition-colors duration-300 ${
-            theme.isDark
-              ? 'bg-black/80 border-blue-500 shadow-blue-500/20'
-              : 'bg-white/90 border-blue-600 shadow-blue-600/20'
-          }`}>
-            <CardHeader>
-              <CardTitle className={`flex items-center gap-2 text-xl font-black ${
-                theme.isDark ? 'text-white' : 'text-gray-900'
-              }`}>
-                <span className="text-2xl">🐦</span>
-                CONNECT TWITTER FOR MORE CONTENT
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center space-y-4">
-                <p className={`text-sm font-bold ${
-                  theme.isDark ? 'text-gray-300' : 'text-gray-600'
-                }`}>
-                  Connect your Twitter account to see personalized trending posts and tweets
-                </p>
-                <TwitterAuthButton 
-                  onAuthSuccess={() => {
-                    console.log('🐦 Twitter auth successful, refreshing trending content...');
-                    dispatch(fetchTrendingContent());
-                  }}
-                  onAuthError={(error) => {
-                    console.error('🐦 Twitter auth error:', error);
-                  }}
-                />
-              </div>
-            </CardContent>
-          </Card>
         )}
       </motion.div>
 

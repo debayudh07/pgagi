@@ -59,8 +59,8 @@ export class MusicService {
         };
       }
       
-      // Search for popular artists from recent years
-      const response = await fetch(`${this.baseUrl}/search?q=year:2023-2024&type=artist&limit=${params.limit || 20}`, {
+      // Search for popular artists from 2025
+      const response = await fetch(`${this.baseUrl}/search?q=year:2025&type=artist&limit=${params.limit || 20}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -196,10 +196,10 @@ export class MusicService {
         };
       }
 
-      // Search for top tracks from recent years
+      // Search for top tracks from 2025
       const searchQuery = params.genre 
-        ? `genre:${params.genre} year:2023-2024`
-        : 'year:2023-2024';
+        ? `genre:${params.genre} year:2025`
+        : 'year:2025';
 
       const response = await fetch(`${this.baseUrl}/search?q=${encodeURIComponent(searchQuery)}&type=track&limit=${params.limit || 20}&market=${params.market || 'US'}`, {
         headers: {
@@ -254,7 +254,7 @@ export class MusicService {
         };
       }
 
-      const searchQuery = `genre:"${genre}" year:2023-2024`;
+      const searchQuery = `genre:"${genre}" year:2025`;
       const response = await fetch(`${this.baseUrl}/search?q=${encodeURIComponent(searchQuery)}&type=track&limit=${params.limit || 20}&market=${params.market || 'US'}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -566,5 +566,144 @@ export class MusicService {
       'blues', 'reggae', 'folk', 'metal', 'punk', 'alternative', 'indie',
       'r-n-b', 'soul', 'funk', 'disco', 'house', 'techno', 'ambient'
     ];
+  }
+
+  // Spotify Playback SDK methods
+  static async initializeSpotifyPlayer(accessToken: string, deviceName: string = 'Web Player'): Promise<any> {
+    return new Promise((resolve, reject) => {
+      if (!window.Spotify) {
+        reject(new Error('Spotify SDK not loaded'));
+        return;
+      }
+
+      const player = new window.Spotify.Player({
+        name: deviceName,
+        getOAuthToken: (cb: (token: string) => void) => {
+          cb(accessToken);
+        },
+        volume: 0.5
+      });
+
+      // Error handling
+      player.addListener('initialization_error', ({ message }: any) => {
+        console.error('Failed to initialize:', message);
+        reject(new Error(message));
+      });
+
+      player.addListener('authentication_error', ({ message }: any) => {
+        console.error('Failed to authenticate:', message);
+        reject(new Error(message));
+      });
+
+      player.addListener('account_error', ({ message }: any) => {
+        console.error('Failed to validate Spotify account:', message);
+        reject(new Error(message));
+      });
+
+      player.addListener('playback_error', ({ message }: any) => {
+        console.error('Failed to perform playback:', message);
+      });
+
+      // Playback status updates
+      player.addListener('player_state_changed', (state: any) => {
+        console.log('Player state changed:', state);
+      });
+
+      // Ready
+      player.addListener('ready', ({ device_id }: any) => {
+        console.log('Ready with Device ID:', device_id);
+        resolve({ player, deviceId: device_id });
+      });
+
+      // Not Ready
+      player.addListener('not_ready', ({ device_id }: any) => {
+        console.log('Device ID has gone offline:', device_id);
+      });
+
+      // Connect to the player!
+      player.connect().then((success: boolean) => {
+        if (success) {
+          console.log('Successfully connected to Spotify!');
+        } else {
+          reject(new Error('Failed to connect to Spotify'));
+        }
+      });
+    });
+  }
+
+  static async playTrackWithSDK(accessToken: string, trackUri: string, deviceId: string): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseUrl}/me/player/play?device_id=${deviceId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          uris: [trackUri]
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Error playing track with SDK:', error);
+      throw error;
+    }
+  }
+
+  static async pausePlaybackSDK(accessToken: string, deviceId: string): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseUrl}/me/player/pause?device_id=${deviceId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Error pausing playback with SDK:', error);
+      throw error;
+    }
+  }
+
+  static async resumePlaybackSDK(accessToken: string, deviceId: string): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseUrl}/me/player/play?device_id=${deviceId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Error resuming playback with SDK:', error);
+      throw error;
+    }
+  }
+
+  static async setVolumeSDK(accessToken: string, volumePercent: number, deviceId: string): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseUrl}/me/player/volume?volume_percent=${volumePercent}&device_id=${deviceId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Error setting volume with SDK:', error);
+      throw error;
+    }
   }
 }

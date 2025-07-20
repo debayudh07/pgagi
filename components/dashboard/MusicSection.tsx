@@ -24,7 +24,11 @@ import {
   fetchUserTopArtists,
   playSpotifyTrack,
   pauseSpotifyPlayback,
-  resumeSpotifyPlayback
+  resumeSpotifyPlayback,
+  initializeSpotifyPlayer,
+  playTrackWithSDK,
+  pausePlaybackSDK,
+  resumePlaybackSDK
 } from '../../store/slices/contentSlice';
 import { useTheme } from '../../lib/useTheme';
 import { ContentItem, MusicTrack, SpotifyTopArtistWithTracks } from '../../types';
@@ -75,6 +79,25 @@ export const MusicSection: React.FC<MusicSectionProps> = ({ onContentAction }) =
     }
   }, [dispatch, isSpotifyConnected, spotifyAccessToken]);
 
+  // Initialize Spotify Player when connected
+  useEffect(() => {
+    if (isSpotifyConnected && spotifyAccessToken && !contentState.spotifyPlayerReady) {
+      // Wait for Spotify SDK to be ready
+      const initPlayer = () => {
+        dispatch(initializeSpotifyPlayer({ 
+          accessToken: spotifyAccessToken,
+          deviceName: 'PGAgi Web Player'
+        }));
+      };
+
+      if (window.Spotify) {
+        initPlayer();
+      } else {
+        window.onSpotifyWebPlaybackSDKReady = initPlayer;
+      }
+    }
+  }, [dispatch, isSpotifyConnected, spotifyAccessToken, contentState.spotifyPlayerReady]);
+
   useEffect(() => {
     if (safeMusic.length === 0) {
       dispatch(fetchMusic({}));
@@ -119,6 +142,20 @@ export const MusicSection: React.FC<MusicSectionProps> = ({ onContentAction }) =
   const handlePlayTrack = (track: MusicTrack) => {
     console.log('handlePlayTrack called with:', track.title, track.previewUrl);
     
+    // If Spotify is connected and we have the SDK ready, use SDK playback
+    if (isSpotifyConnected && spotifyAccessToken && contentState.spotifyPlayerReady && contentState.spotifyDeviceId) {
+      const trackUri = `spotify:track:${track.id}`;
+      console.log('Using Spotify SDK to play track:', trackUri);
+      dispatch(playTrackWithSDK({ 
+        accessToken: spotifyAccessToken, 
+        trackUri: trackUri, 
+        deviceId: contentState.spotifyDeviceId 
+      }));
+      dispatch(playTrack(track));
+      return;
+    }
+    
+    // Fallback to preview URL playback
     if (!track.previewUrl) {
       console.warn('No preview URL available for track:', track.title);
       alert('Sorry, no preview available for this track');
@@ -127,6 +164,12 @@ export const MusicSection: React.FC<MusicSectionProps> = ({ onContentAction }) =
     
     if (currentPlayingTrack?.id === track.id && currentPlayingTrack?.isPlaying) {
       console.log('Pausing currently playing track');
+      if (isSpotifyConnected && spotifyAccessToken && contentState.spotifyPlayerReady && contentState.spotifyDeviceId) {
+        dispatch(pausePlaybackSDK({ 
+          accessToken: spotifyAccessToken, 
+          deviceId: contentState.spotifyDeviceId 
+        }));
+      }
       dispatch(pauseTrack(track.id));
     } else {
       console.log('Starting new track playback');

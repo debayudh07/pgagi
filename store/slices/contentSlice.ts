@@ -4,7 +4,6 @@ import { MovieService } from '../../services/api/movieService';
 import { NewsService } from '../../services/api/newsService';
 import { MusicService } from '../../services/api/musicService';
 import { SocialService } from '../../services/api/socialService';
-import { TwitterService } from '../../services/api/twitterService';
 import { SpotifyUserService } from '../../services/api/spotifyUserService';
 import { combineWithUniqueIds, ensureUniqueIds } from '../../utils/contentUtils';
 
@@ -42,8 +41,10 @@ interface ContentState {
   userDevices: any[];
   isSpotifyConnected: boolean;
   spotifyAccessToken: string | null;
-  // Twitter auth status
-  twitterAuthRequired: boolean;
+  // Spotify Playback SDK
+  spotifyPlayer: any | null;
+  spotifyDeviceId: string | null;
+  spotifyPlayerReady: boolean;
   loading: LoadingState;
   pagination: PaginationState;
   searchQuery: string;
@@ -89,8 +90,10 @@ const initialState: ContentState = {
   userDevices: [],
   isSpotifyConnected: false,
   spotifyAccessToken: null,
-  // Twitter auth status
-  twitterAuthRequired: false,
+  // Spotify Playback SDK
+  spotifyPlayer: null,
+  spotifyDeviceId: null,
+  spotifyPlayerReady: false,
   loading: {
     isLoading: false,
     error: null,
@@ -202,40 +205,15 @@ export const fetchTrendingContent = createAsyncThunk(
         itemArrays.push({ items: tvShowsResponse.data.slice(0, 5), prefix: 'tv' });
       }
 
-      // Fetch trending Twitter posts
-      console.log('🔥 Fetching trending Twitter posts...');
-      // Initialize Twitter auth to check for existing tokens
-      TwitterService.initializeAuth();
-      
-      const twitterResponse = await TwitterService.getTrendingTwitterPosts({ 
-        maxResults: 8,
-        excludeReplies: true 
-      });
-      
-      // Track if Twitter authentication is required
-      let twitterAuthRequired = false;
-      
-      if (twitterResponse.status === 'success' && twitterResponse.data) {
-        console.log(`🔥 Got ${twitterResponse.data.length} trending Twitter posts`);
-        itemArrays.push({ items: twitterResponse.data, prefix: 'twitter' });
-      } else if (twitterResponse.requiresAuth) {
-        twitterAuthRequired = true;
-        console.log('🔥 Twitter authentication required for trending posts');
-      } else if (twitterResponse.data && twitterResponse.data.length > 0) {
-        // Include fallback data even if status is error
-        console.log(`🔥 Got ${twitterResponse.data.length} fallback Twitter posts`);
-        itemArrays.push({ items: twitterResponse.data, prefix: 'twitter' });
-      }
-
       // Fetch top music tracks
-      console.log('🔥 Fetching trending music tracks...');
+      console.log('🔥 Fetching trending music tracks from 2025...');
       try {
         const musicResponse = await MusicService.getTopTracks({ 
           limit: 6,
           market: 'US' 
         });
         if (musicResponse.status === 'success' && musicResponse.data) {
-          console.log(`🔥 Got ${musicResponse.data.length} trending music tracks`);
+          console.log(`🔥 Got ${musicResponse.data.length} trending music tracks from 2025`);
           itemArrays.push({ items: musicResponse.data, prefix: 'music' });
         }
       } catch (musicError) {
@@ -261,10 +239,7 @@ export const fetchTrendingContent = createAsyncThunk(
       const shuffledResults = combinedResults.sort(() => Math.random() - 0.5);
       
       console.log(`🔥 Total trending items: ${shuffledResults.length}`);
-      return { 
-        items: shuffledResults.slice(0, 20), // Return top 20 trending items
-        twitterAuthRequired 
-      };
+      return shuffledResults.slice(0, 20); // Return top 20 trending items
     } catch (error) {
       console.error('Error fetching trending content:', error);
       return rejectWithValue('Failed to fetch trending content');
@@ -388,14 +363,14 @@ export const fetchMusic = createAsyncThunk(
   'content/fetchMusic',
   async (params: { page?: number } = {}, { rejectWithValue }) => {
     try {
-      console.log('🎵 Fetching music tracks...');
+      console.log('🎵 Fetching 2025 music tracks...');
       const musicResponse = await MusicService.getTopTracks({ 
         limit: 20,
         market: 'US'
       });
       
       if (musicResponse.status === 'success' && musicResponse.data) {
-        console.log(`🎵 Got ${musicResponse.data.length} music tracks`);
+        console.log(`🎵 Got ${musicResponse.data.length} music tracks from 2025`);
         return ensureUniqueIds(musicResponse.data as ContentItem[], 'music');
       }
       
@@ -604,6 +579,77 @@ export const resumeSpotifyPlayback = createAsyncThunk(
   }
 );
 
+// Spotify Playback SDK thunks
+export const initializeSpotifyPlayer = createAsyncThunk(
+  'content/initializeSpotifyPlayer',
+  async ({ accessToken, deviceName }: { accessToken: string; deviceName?: string }, { rejectWithValue }) => {
+    try {
+      const { MusicService } = await import('../../services/api/musicService');
+      const playerData = await MusicService.initializeSpotifyPlayer(accessToken, deviceName);
+      return playerData;
+    } catch (error) {
+      console.error('Error initializing Spotify player:', error);
+      return rejectWithValue('Failed to initialize Spotify player');
+    }
+  }
+);
+
+export const playTrackWithSDK = createAsyncThunk(
+  'content/playTrackWithSDK',
+  async ({ accessToken, trackUri, deviceId }: { accessToken: string; trackUri: string; deviceId: string }, { rejectWithValue }) => {
+    try {
+      const { MusicService } = await import('../../services/api/musicService');
+      await MusicService.playTrackWithSDK(accessToken, trackUri, deviceId);
+      return { trackUri, deviceId };
+    } catch (error) {
+      console.error('Error playing track with SDK:', error);
+      return rejectWithValue('Failed to play track with SDK');
+    }
+  }
+);
+
+export const pausePlaybackSDK = createAsyncThunk(
+  'content/pausePlaybackSDK',
+  async ({ accessToken, deviceId }: { accessToken: string; deviceId: string }, { rejectWithValue }) => {
+    try {
+      const { MusicService } = await import('../../services/api/musicService');
+      await MusicService.pausePlaybackSDK(accessToken, deviceId);
+      return { deviceId };
+    } catch (error) {
+      console.error('Error pausing playback with SDK:', error);
+      return rejectWithValue('Failed to pause playback with SDK');
+    }
+  }
+);
+
+export const resumePlaybackSDK = createAsyncThunk(
+  'content/resumePlaybackSDK',
+  async ({ accessToken, deviceId }: { accessToken: string; deviceId: string }, { rejectWithValue }) => {
+    try {
+      const { MusicService } = await import('../../services/api/musicService');
+      await MusicService.resumePlaybackSDK(accessToken, deviceId);
+      return { deviceId };
+    } catch (error) {
+      console.error('Error resuming playback with SDK:', error);
+      return rejectWithValue('Failed to resume playback with SDK');
+    }
+  }
+);
+
+export const setVolumeSDK = createAsyncThunk(
+  'content/setVolumeSDK',
+  async ({ accessToken, volumePercent, deviceId }: { accessToken: string; volumePercent: number; deviceId: string }, { rejectWithValue }) => {
+    try {
+      const { MusicService } = await import('../../services/api/musicService');
+      await MusicService.setVolumeSDK(accessToken, volumePercent, deviceId);
+      return { volumePercent, deviceId };
+    } catch (error) {
+      console.error('Error setting volume with SDK:', error);
+      return rejectWithValue('Failed to set volume with SDK');
+    }
+  }
+);
+
 export const fetchSocial = createAsyncThunk(
   'content/fetchSocial',
   async (params: { page?: number } = {}, { rejectWithValue }) => {
@@ -640,41 +686,6 @@ export const fetchSocial = createAsyncThunk(
     } catch (error) {
       console.error('Error fetching social content:', error);
       return rejectWithValue('Failed to fetch social content');
-    }
-  }
-);
-
-// Twitter-specific async thunk
-export const fetchTwitterPosts = createAsyncThunk(
-  'content/fetchTwitterPosts',
-  async (params: { maxResults?: number } = {}, { rejectWithValue }) => {
-    try {
-      console.log('🐦 ContentSlice: Fetching Twitter posts...');
-      
-      // Initialize Twitter service
-      TwitterService.initializeAuth();
-      
-      if (!TwitterService.isAuthenticated()) {
-        console.warn('🐦 Twitter not authenticated, returning empty array');
-        return [];
-      }
-      
-      const response = await TwitterService.getUserTweets({
-        maxResults: params.maxResults || 10,
-        excludeReplies: true,
-        includeRetweets: false,
-      });
-      
-      if (response.status === 'success') {
-        console.log(`🐦 ContentSlice: Successfully fetched ${response.data.length} Twitter posts`);
-        return ensureUniqueIds(response.data as ContentItem[], 'twitter');
-      } else {
-        console.error('🐦 Twitter API error:', response.message);
-        return rejectWithValue(response.message || 'Failed to fetch Twitter posts');
-      }
-    } catch (error) {
-      console.error('🐦 Error fetching Twitter posts:', error);
-      return rejectWithValue('Failed to fetch Twitter posts');
     }
   }
 );
@@ -806,6 +817,16 @@ const contentSlice = createSlice({
       state.isSpotifyConnected = action.payload.isConnected;
       state.spotifyAccessToken = action.payload.accessToken || null;
     },
+    setSpotifyPlayer: (state, action: PayloadAction<{ player: any; deviceId: string }>) => {
+      state.spotifyPlayer = action.payload.player;
+      state.spotifyDeviceId = action.payload.deviceId;
+      state.spotifyPlayerReady = true;
+    },
+    clearSpotifyPlayer: (state) => {
+      state.spotifyPlayer = null;
+      state.spotifyDeviceId = null;
+      state.spotifyPlayerReady = false;
+    },
   },
   extraReducers: (builder) => {
     // Fetch Feed Content
@@ -830,8 +851,7 @@ const contentSlice = createSlice({
       })
       .addCase(fetchTrendingContent.fulfilled, (state, action) => {
         state.loading.isLoading = false;
-        state.trending = action.payload.items;
-        state.twitterAuthRequired = action.payload.twitterAuthRequired;
+        state.trending = action.payload;
       })
       .addCase(fetchTrendingContent.rejected, (state, action) => {
         state.loading.isLoading = false;
@@ -986,27 +1006,6 @@ const contentSlice = createSlice({
         state.loading.error = action.payload as string;
       });
 
-    // Fetch Twitter Posts
-    builder
-      .addCase(fetchTwitterPosts.pending, (state) => {
-        state.loading.isLoading = true;
-      })
-      .addCase(fetchTwitterPosts.fulfilled, (state, action) => {
-        state.loading.isLoading = false;
-        // Merge Twitter posts with existing social content
-        const twitterPosts = Array.isArray(action.payload) ? action.payload : [];
-        // Remove any existing Twitter posts first to avoid duplicates
-        state.social = state.social.filter(post => !post.id.startsWith('twitter-'));
-        // Add new Twitter posts
-        state.social = [...twitterPosts, ...state.social];
-        console.log('🐦 ContentSlice: Twitter posts fetched successfully, count:', twitterPosts.length);
-      })
-      .addCase(fetchTwitterPosts.rejected, (state, action) => {
-        state.loading.isLoading = false;
-        state.loading.error = action.payload as string;
-        console.error('🐦 ContentSlice: Failed to fetch Twitter posts:', action.payload);
-      });
-
     // User Spotify reducers
     builder
       .addCase(fetchUserPlaylists.pending, (state) => {
@@ -1067,6 +1066,32 @@ const contentSlice = createSlice({
       .addCase(resumeSpotifyPlayback.fulfilled, (state, action) => {
         // Playback resumed successfully
       });
+
+    // Spotify Playback SDK
+    builder
+      .addCase(initializeSpotifyPlayer.fulfilled, (state, action) => {
+        state.spotifyPlayer = action.payload.player;
+        state.spotifyDeviceId = action.payload.deviceId;
+        state.spotifyPlayerReady = true;
+      })
+      .addCase(initializeSpotifyPlayer.rejected, (state, action) => {
+        state.loading.error = action.payload as string;
+        state.spotifyPlayerReady = false;
+      });
+
+    builder
+      .addCase(playTrackWithSDK.fulfilled, (state, action) => {
+        // Track played successfully with SDK
+      })
+      .addCase(pausePlaybackSDK.fulfilled, (state, action) => {
+        // Playback paused successfully with SDK
+      })
+      .addCase(resumePlaybackSDK.fulfilled, (state, action) => {
+        // Playback resumed successfully with SDK
+      })
+      .addCase(setVolumeSDK.fulfilled, (state, action) => {
+        // Volume set successfully with SDK
+      });
   },
 });
 
@@ -1086,6 +1111,8 @@ export const {
   stopAllTracks,
   selectGenre,
   setSpotifyConnection,
+  setSpotifyPlayer,
+  clearSpotifyPlayer,
 } = contentSlice.actions;
 
 export default contentSlice.reducer;
